@@ -6,14 +6,7 @@ out/
 .gradle/
 
 # IDE files (IntelliJ / Android Studio)
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/gradle.xml
-.idea/assetWizardSettings.xml
-.idea/dictionaries
-.idea/libraries
-.idea/caches
-.idea/navEditor.xml
+.idea/
 *.iml
 *.iws
 *.ipr
@@ -36,3 +29,22 @@ google-services.json
 
 # Crashlytics
 com_crashlytics_export_strings.xml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+env/
+
+# Environment variables (nunca commitar .env real)
+.env
+
+# Project specific files
+IA PARA DESENVOLVEDORES.pdf
+IA PARA DESENVOLVEDORES.md
+LLM.md
