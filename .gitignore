@@ -1,0 +1,38 @@
+# Build artifacts
+build/
+bin/
+gen/
+out/
+.gradle/
+
+# IDE files (IntelliJ / Android Studio)
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/navEditor.xml
+*.iml
+*.iws
+*.ipr
+
+# Local configuration files
+local.properties
+.DS_Store
+
+# Captures and logs
+captures/
+*.log
+
+# Keystore files (NEVER commit these)
+*.jks
+*.keystore
+*.p12
+
+# Google Services
+google-services.json
+
+# Crashlytics
+com_crashlytics_export_strings.xml
