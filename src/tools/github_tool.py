@@ -1,10 +1,10 @@
-from github import Github
+from github import Github, Auth
 from typing import List, Dict, Any
 
 
 class GitHubTool:
     def __init__(self, token: str):
-        self.client = Github(token)
+        self.client = Github(auth=Auth.Token(token))
 
     def get_open_prs(self, owner: str, repo_name: str) -> List[Dict[str, Any]]:
         repo = self.client.get_repo(f"{owner}/{repo_name}")

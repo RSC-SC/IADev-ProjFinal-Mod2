@@ -8,9 +8,13 @@ from src.nodes.comment_poster import postar_comentario
 from src.nodes.finish import encerrar_execucao
 
 
-def _has_pending_prs(state: PRReviewState) -> str:
+def _is_valid(state: PRReviewState) -> str:
     if not state.get("is_valid", False) and state.get("error_message"):
         return "encerrar_execucao"
+    return "buscar_prs_pendentes"
+
+
+def _has_pending_prs(state: PRReviewState) -> str:
     if state["pending_prs"]:
         return "coletar_diff_pr"
     return "encerrar_execucao"
@@ -34,7 +38,11 @@ def build_graph() -> StateGraph:
 
     builder.set_entry_point("validar_entrada")
 
-    builder.add_edge("validar_entrada", "buscar_prs_pendentes")
+    builder.add_conditional_edges(
+        "validar_entrada",
+        _is_valid,
+        {"buscar_prs_pendentes": "buscar_prs_pendentes", "encerrar_execucao": "encerrar_execucao"}
+    )
     builder.add_conditional_edges(
         "buscar_prs_pendentes",
         _has_pending_prs,
