@@ -6,6 +6,7 @@ from src.nodes.pr_collector import coletar_diff_pr
 from src.nodes.code_analyzer import analisar_codigo
 from src.nodes.comment_poster import postar_comentario
 from src.nodes.finish import encerrar_execucao
+from src.nodes.history_loader import carregar_historico
 
 
 def _is_valid(state: PRReviewState) -> str:
@@ -16,7 +17,7 @@ def _is_valid(state: PRReviewState) -> str:
 
 def _has_pending_prs(state: PRReviewState) -> str:
     if state["pending_prs"]:
-        return "coletar_diff_pr"
+        return "carregar_historico"
     return "encerrar_execucao"
 
 
@@ -31,6 +32,7 @@ def build_graph() -> StateGraph:
 
     builder.add_node("validar_entrada", validar_entrada)
     builder.add_node("buscar_prs_pendentes", buscar_prs_pendentes)
+    builder.add_node("carregar_historico", carregar_historico)
     builder.add_node("coletar_diff_pr", coletar_diff_pr)
     builder.add_node("analisar_codigo", analisar_codigo)
     builder.add_node("postar_comentario", postar_comentario)
@@ -46,8 +48,9 @@ def build_graph() -> StateGraph:
     builder.add_conditional_edges(
         "buscar_prs_pendentes",
         _has_pending_prs,
-        {"coletar_diff_pr": "coletar_diff_pr", "encerrar_execucao": "encerrar_execucao"}
+        {"carregar_historico": "carregar_historico", "encerrar_execucao": "encerrar_execucao"}
     )
+    builder.add_edge("carregar_historico", "coletar_diff_pr")
     builder.add_edge("coletar_diff_pr", "analisar_codigo")
     builder.add_edge("analisar_codigo", "postar_comentario")
     builder.add_conditional_edges(

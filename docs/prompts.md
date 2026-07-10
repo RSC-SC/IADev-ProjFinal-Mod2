@@ -95,11 +95,23 @@ Fluxo do agente:
 [Início]
   → validar_entrada (valida URL + variáveis de ambiente)
   → buscar_prs_pendentes (lista PRs abertos via PyGithub)
+  → carregar_historico (lê reviews anteriores do JSON)
   → Borda Condicional: pending_prs vazia?
       ├── Sim → encerrar_execucao
-      └── Não → coletar_diff_pr → analisar_codigo(Gemini) → postar_comentario
+      └── Não → coletar_diff_pr → analisar_codigo(Gemini/OpenRouter) → postar_comentario
                  ↻ volta para verificar pending_prs novamente
 
 State: PRReviewState com repo_url, owner, name, pending_prs, current_pr,
-       current_diff, current_review, processed_prs_count
+       current_diff, current_review, processed_prs_count, review_history
+```
+
+---
+
+## 6. Prompt de Memória — Revisões Anteriores
+
+**Finalidade:** Instrução adicionada ao system prompt para orientar o LLM a considerar revisões anteriores e evitar repetições.
+
+```
+IMPORTANT: Previous reviews have been provided as context. Avoid repeating
+suggestions that were already made and addressed. Focus on new or recurring issues.
 ```

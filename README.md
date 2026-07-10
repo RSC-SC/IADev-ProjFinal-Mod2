@@ -28,6 +28,11 @@ O agente é implementado com **LangGraph** (StateGraph), organizado em nós e ar
 └─────────┬───────────────┘           └───────────────────┘
           │ Sim (tem PRs)
           ▼
+┌─────────────────────┐
+│ carregar_historico  │  ← Carrega revisões anteriores do JSON
+└─────────┬───────────┘
+          │
+          ▼
 ┌──────────────────┐
 │  coletar_diff_pr │ ◀──┐
 └────────┬─────────┘    │
@@ -52,9 +57,10 @@ O agente é implementado com **LangGraph** (StateGraph), organizado em nós e ar
 |----|--------|
 | `validar_entrada` | Valida formato da URL e verifica se as chaves de API estão configuradas |
 | `buscar_prs_pendentes` | Lista todos os PRs abertos do repositório via API GitHub |
+| `carregar_historico` | Carrega revisões anteriores do repositório para contexto do LLM |
 | `coletar_diff_pr` | Baixa o diff do PR atual e o remove da fila de pendentes |
 | `analisar_codigo` | Envia o diff para o LLM e gera a revisão estruturada |
-| `postar_comentario` | Publica o comentário de revisão no PR via API GitHub |
+| `postar_comentario` | Publica o comentário de revisão no PR via API GitHub e salva no histórico |
 | `encerrar_execucao` | Finaliza o processo com o resumo de PRs processados |
 
 ## Ferramenta Integrada
@@ -162,9 +168,8 @@ O comentário postado no PR:
 
 - **Quota do Gemini:** no tier gratuito, a quota é limitada; o fallback para OpenRouter mitiga isso
 - **Modelo gratuito do OpenRouter:** pode ter latência maior e qualidade variável
-- **Sem persistência:** o resultado não é salvo localmente, apenas postado como comentário no GitHub
 - **Análise por diff:** não considera o contexto completo do repositório, apenas as linhas alteradas
-- **Sem aprendizado:** o agente não aprende com revisões anteriores
+- **Histórico local:** o histórico de revisões é armazenado em JSON local, não sincronizado entre máquinas
 
 ## Estrutura do Projeto
 
@@ -174,6 +179,7 @@ Miniprojeto_Mod02/
 ├── .gitignore                # Arquivos ignorados pelo Git
 ├── requirements.txt          # Dependências do projeto
 ├── main.py                   # Ponto de entrada (CLI)
+├── reviews/                  # Histórico de revisões (JSON, gerado automaticamente)
 ├── docs/
 │   └── prompts.md            # Registro dos prompts utilizados
 └── src/
@@ -182,9 +188,11 @@ Miniprojeto_Mod02/
     ├── nodes/
     │   ├── validation.py     # Validação de entrada
     │   ├── pr_collector.py   # Coleta de PRs e diffs
+    │   ├── history_loader.py # Carrega histórico de revisões
     │   ├── code_analyzer.py  # Análise de código com LLM
     │   ├── comment_poster.py # Postagem de comentários
     │   └── finish.py         # Encerramento
     └── tools/
-        └── github_tool.py    # Wrapper da API GitHub (PyGithub)
+        ├── github_tool.py    # Wrapper da API GitHub (PyGithub)
+        └── memory_tool.py    # Leitura/escrita de histórico em JSON
 ```

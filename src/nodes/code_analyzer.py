@@ -19,7 +19,9 @@ Analyze the provided code diff and generate a structured review in Markdown with
 - List specific suggestions with line references when possible
 
 Focus on: code readability, best practices, potential bugs, security concerns, and maintainability.
-Be constructive and specific. Always reference file names and line numbers from the diff."""
+Be constructive and specific. Always reference file names and line numbers from the diff.
+
+IMPORTANT: Previous reviews have been provided as context. Avoid repeating suggestions that were already made and addressed. Focus on new or recurring issues."""
 
 
 def _try_gemini() -> Optional[BaseChatModel]:
@@ -86,9 +88,18 @@ def _get_providers():
 
 def analisar_codigo(state: PRReviewState) -> Dict[str, Any]:
     diff = state["current_diff"]
+    history = state.get("review_history", [])
+
+    history_context = ""
+    if history:
+        history_context = "\n\n## Previous Reviews (for context - do NOT repeat these):\n"
+        for i, entry in enumerate(history[-3:], 1):
+            history_context += f"\n### Review {i} (PR #{entry.get('pr_number', '?')} - {entry.get('pr_title', 'N/A')}):\n"
+            history_context += entry.get("review", "N/A")[:300] + "\n"
+
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=f"Review the following code diff:\n\n{diff}")
+        HumanMessage(content=f"Review the following code diff:\n\n{diff}{history_context}")
     ]
     review = _invoke_with_fallback(messages, _get_providers())
     return {"current_review": review}

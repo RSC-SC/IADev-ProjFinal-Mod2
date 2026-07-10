@@ -28,6 +28,7 @@ def main():
         "current_diff": "",
         "current_review": "",
         "processed_prs_count": 0,
+        "review_history": [],
     }
 
     result = graph.invoke(initial_state)
