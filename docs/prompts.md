@@ -65,6 +65,26 @@ Decisão: Gemini 2.0 Flash + PyGithub
 
 ---
 
+---
+
+## 5. Prompt de Decisão Técnica — Provedor OpenRouter
+
+**Finalidade:** Integração com OpenRouter como alternativa ao Gemini.
+
+```
+Adicionar suporte a múltiplos provedores de LLM com fallback:
+
+1. Se GOOGLE_API_KEY estiver preenchida → Gemini 2.0 Flash
+2. Se OPENROUTER_API_KEY estiver preenchida → OpenRouter
+3. Se ambas preenchidas → tentar Gemini primeiro, fallback para OpenRouter
+4. Se nenhuma → erro informando necessário configurar ao menos uma
+
+OpenRouter usa API compatível com OpenAI.
+Base URL: https://openrouter.ai/api/v1
+Modelo gratuito: nvidia/nemotron-3-super-120b-a12b:free
+Pacote: langchain-openai (ChatOpenAI)
+```
+
 ## 4. Prompt de Estrutura do Grafo
 
 **Finalidade:** Prompt para definição do fluxo do grafo LangGraph.

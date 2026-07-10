@@ -25,10 +25,10 @@ def validar_entrada(state: PRReviewState) -> Dict[str, Any]:
             "error_message": "Erro: GITHUB_TOKEN não configurado no ambiente"
         }
 
-    if not os.getenv("GOOGLE_API_KEY"):
+    if not os.getenv("GOOGLE_API_KEY") and not os.getenv("OPENROUTER_API_KEY"):
         return {
             "is_valid": False,
-            "error_message": "Erro: GOOGLE_API_KEY não configurada no ambiente"
+            "error_message": "Erro: Configure pelo menos uma chave de LLM (GOOGLE_API_KEY ou OPENROUTER_API_KEY) no .env"
         }
 
     return {
