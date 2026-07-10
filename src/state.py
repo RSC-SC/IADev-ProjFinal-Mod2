@@ -12,3 +12,4 @@ class PRReviewState(TypedDict):
     current_diff: str
     current_review: str
     processed_prs_count: int
+    review_history: List[Dict[str, Any]]
