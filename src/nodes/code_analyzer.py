@@ -89,6 +89,7 @@ def _get_providers():
 def analisar_codigo(state: PRReviewState) -> Dict[str, Any]:
     diff = state["current_diff"]
     history = state.get("review_history", [])
+    pr_number = (state.get("current_pr", {}) or {}).get("number", "?")
 
     history_context = ""
     if history:
@@ -101,5 +102,13 @@ def analisar_codigo(state: PRReviewState) -> Dict[str, Any]:
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=f"Review the following code diff:\n\n{diff}{history_context}")
     ]
-    review = _invoke_with_fallback(messages, _get_providers())
+    try:
+        review = _invoke_with_fallback(messages, _get_providers())
+    except RuntimeError as e:
+        # Todos os provedores falharam: termina o lote de forma limpa,
+        # sem derrubar o grafo com traceback.
+        return {
+            "pending_prs": [],
+            "error_message": f"Erro ao analisar o PR #{pr_number}: {e}",
+        }
     return {"current_review": review}
