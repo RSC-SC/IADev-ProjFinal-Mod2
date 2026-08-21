@@ -9,8 +9,14 @@ def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
     tool = GitHubTool(os.getenv("GITHUB_TOKEN"))
     pr = state["current_pr"]
     review = state["current_review"]
+    metadata = state.get("current_metadata_summary", "")
 
     body = f"""## 🤖 Revisão Automática de Código
+
+### 📋 Metadados do PR
+{metadata}
+
+---
 
 {review}
 
@@ -32,5 +38,6 @@ def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
         "processed_prs_count": state.get("processed_prs_count", 0) + 1,
         "current_pr": {},
         "current_diff": "",
-        "current_review": ""
+        "current_review": "",
+        "current_metadata_summary": ""
     }

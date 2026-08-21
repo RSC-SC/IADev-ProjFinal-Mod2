@@ -11,5 +11,7 @@ class PRReviewState(TypedDict):
     current_pr: Dict[str, Any]
     current_diff: str
     current_review: str
+    current_metadata_summary: str  # gerado em paralelo à análise do diff
     processed_prs_count: int
+    max_prs: int  # limite explícito de iterações do loop (autonomia delimitada)
     review_history: List[Dict[str, Any]]
