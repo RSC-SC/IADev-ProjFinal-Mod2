@@ -1,4 +1,4 @@
-import sys
+import argparse
 import os
 from dotenv import load_dotenv
 
@@ -7,18 +7,27 @@ load_dotenv()
 from src.graph import build_graph
 
 
-def main():
-    if len(sys.argv) < 2:
-        print("Uso: python main.py <url-do-repositorio>")
-        print("Exemplo: python main.py https://github.com/dono/repositorio")
-        sys.exit(1)
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Agente Revisor de PRs — analisa PRs abertos de um repositório GitHub"
+    )
+    parser.add_argument("repo_url", help="URL do repositório GitHub (ex.: https://github.com/dono/repositorio)")
+    parser.add_argument(
+        "--max-prs",
+        type=int,
+        default=int(os.getenv("MAX_PRS", "3")),
+        help="Limite máximo de PRs a revisar nesta execução (padrão: 3)",
+    )
+    return parser.parse_args()
 
-    repo_url = sys.argv[1]
+
+def main():
+    args = parse_args()
 
     graph = build_graph()
 
     initial_state = {
-        "repo_url": repo_url,
+        "repo_url": args.repo_url,
         "repo_owner": "",
         "repo_name": "",
         "is_valid": True,
@@ -27,7 +36,9 @@ def main():
         "current_pr": {},
         "current_diff": "",
         "current_review": "",
+        "current_metadata_summary": "",
         "processed_prs_count": 0,
+        "max_prs": max(1, args.max_prs),
         "review_history": [],
     }
 

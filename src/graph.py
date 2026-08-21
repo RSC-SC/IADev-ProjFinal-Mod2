@@ -4,6 +4,7 @@ from src.nodes.validation import validar_entrada
 from src.nodes.pr_collector import buscar_prs_pendentes
 from src.nodes.pr_collector import coletar_diff_pr
 from src.nodes.code_analyzer import analisar_codigo
+from src.nodes.metadata_summarizer import resumir_metadados
 from src.nodes.comment_poster import postar_comentario
 from src.nodes.finish import encerrar_execucao
 from src.nodes.history_loader import carregar_historico
@@ -21,8 +22,16 @@ def _has_pending_prs(state: PRReviewState) -> str:
     return "encerrar_execucao"
 
 
+def _reached_limit(state: PRReviewState) -> bool:
+    """Limite explícito de iterações do loop (autonomia delimitada)."""
+    max_prs = state.get("max_prs", 0)
+    if max_prs is not None and max_prs > 0:
+        return state.get("processed_prs_count", 0) >= max_prs
+    return False
+
+
 def _after_post(state: PRReviewState) -> str:
-    if state["pending_prs"]:
+    if state["pending_prs"] and not _reached_limit(state):
         return "coletar_diff_pr"
     return "encerrar_execucao"
 
@@ -35,6 +44,7 @@ def build_graph() -> StateGraph:
     builder.add_node("carregar_historico", carregar_historico)
     builder.add_node("coletar_diff_pr", coletar_diff_pr)
     builder.add_node("analisar_codigo", analisar_codigo)
+    builder.add_node("resumir_metadados", resumir_metadados)
     builder.add_node("postar_comentario", postar_comentario)
     builder.add_node("encerrar_execucao", encerrar_execucao)
 
@@ -51,8 +61,15 @@ def build_graph() -> StateGraph:
         {"carregar_historico": "carregar_historico", "encerrar_execucao": "encerrar_execucao"}
     )
     builder.add_edge("carregar_historico", "coletar_diff_pr")
+
+    # Fan-out: análise do diff (LLM) e resumo de metadados rodam EM PARALELO
     builder.add_edge("coletar_diff_pr", "analisar_codigo")
+    builder.add_edge("coletar_diff_pr", "resumir_metadados")
+
+    # Fan-in: ambos os ramos alimentam a postagem do comentário
     builder.add_edge("analisar_codigo", "postar_comentario")
+    builder.add_edge("resumir_metadados", "postar_comentario")
+
     builder.add_conditional_edges(
         "postar_comentario",
         _after_post,

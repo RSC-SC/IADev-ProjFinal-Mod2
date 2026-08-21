@@ -87,8 +87,8 @@ IADev-ProjFinal-Mod2/
 
 | Fase | Escopo | Status |
 |------|--------|--------|
-| F0 | Preparação: branches main/develop, AGENTS.md, prompts.md, Kanban | 🔄 Em andamento |
-| F1 | Paralelização no grafo + robustez GitHubTool + 2 cenários documentados | ⬜ |
+| F0 | Preparação: branches main/develop, AGENTS.md, prompts.md, Kanban | ✅ Concluída (20/08/26) |
+| F1 | Paralelização no grafo + robustez GitHubTool + 2 cenários documentados | 🔄 Em andamento |
 | F2 | Sanitização anti prompt-injection + limites de autonomia (--dry-run) | ⬜ |
 | F3 | Logs estruturados JSON + auditoria com latência (2 sinais correlacionados) | ⬜ |
 | F4 | Testes pytest gerados/refinados com IA + review do próprio agente em PR real | ⬜ |
