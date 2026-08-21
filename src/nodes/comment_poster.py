@@ -1,12 +1,11 @@
 import os
 from typing import Dict, Any
 from src.state import PRReviewState
-from src.tools.github_tool import GitHubTool
+from src.tools.github_tool import GitHubTool, GitHubToolError
 from src.tools.memory_tool import save_review
 
 
 def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
-    tool = GitHubTool(os.getenv("GITHUB_TOKEN"))
     pr = state["current_pr"]
     review = state["current_review"]
     metadata = state.get("current_metadata_summary", "")
@@ -23,7 +22,19 @@ def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
 ---
 *Gerado pelo Agente Revisor de PRs | IA para Desenvolvedores*"""
 
-    tool.post_comment(state["repo_owner"], state["repo_name"], pr["number"], body)
+    try:
+        tool = GitHubTool(os.getenv("GITHUB_TOKEN"))
+        result = tool.post_comment(
+            state["repo_owner"], state["repo_name"], pr["number"], body
+        )
+    except GitHubToolError as e:
+        # Falha estruturada: não conta o PR nem salva histórico; termina limpo
+        return {
+            "pending_prs": [],
+            "error_message": (
+                f"Erro ao postar comentário no PR #{pr.get('number', '?')}: {e}"
+            ),
+        }
 
     save_review(
         repo_owner=state["repo_owner"],
