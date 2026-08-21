@@ -34,21 +34,25 @@ O agente é implementado com **LangGraph** (StateGraph), organizado em nós e ar
           │
           ▼
 ┌──────────────────┐
-│  coletar_diff_pr │ ◀──┐
-└────────┬─────────┘    │
-         ▼              │
-┌──────────────────┐    │
-│  analisar_codigo │    │  Loop: processa cada PR
-└────────┬─────────┘    │
-         ▼              │
-┌──────────────────────┐│    Sim
-│  postar_comentario   │┤ ────────▶ volta para coletar_diff_pr
-└──────────────────────┘│
-                        │ Não
-                        ▼
-               ┌───────────────────┐
-               │ encerrar_execucao │
-               └───────────────────┘
+│  coletar_diff_pr │ ◀──────────────┐
+└────────┬─────────┘                │
+         │ (fan-out)                │
+    ┌────┴─────────────┐            │
+    ▼                  ▼            │     Loop: processa cada PR
+┌──────────────────┐ ┌──────────────────────┐│   (até --max-prs)
+│  analisar_codigo │ │  resumir_metadados   ││
+│  (LLM, lento)    │ │  (determinístico, ⚡) ││
+└────────┬─────────┘ └──────────┬───────────┘│
+         └───────┬──────────────┘ (fan-in)    │
+                 ▼                            │
+        ┌──────────────────────┐              │ Sim (fila não vazia
+        │  postar_comentario   │ ─────────────┘  e abaixo do limite)
+        └──────────┬───────────┘
+                   │ Não (fila vazia ou limite atingido)
+                   ▼
+          ┌───────────────────┐
+          │ encerrar_execucao │
+          └───────────────────┘
 ```
 
 ### Nós do Grafo
@@ -60,7 +64,8 @@ O agente é implementado com **LangGraph** (StateGraph), organizado em nós e ar
 | `carregar_historico` | Carrega revisões anteriores do repositório para contexto do LLM |
 | `coletar_diff_pr` | Baixa o diff do PR atual e o remove da fila de pendentes |
 | `analisar_codigo` | Envia o diff para o LLM e gera a revisão estruturada |
-| `postar_comentario` | Publica o comentário de revisão no PR via API GitHub e salva no histórico |
+| `resumir_metadados` | Gera sumário determinístico do PR (arquivos, linhas, complexidade) — roda **em paralelo** à análise do LLM |
+| `postar_comentario` | Publica comentário combinando metadados + revisão no PR e salva no histórico |
 | `encerrar_execucao` | Finaliza o processo com o resumo de PRs processados |
 
 ## Ferramenta Integrada
@@ -85,8 +90,8 @@ O agente utiliza a **API do GitHub** por meio da biblioteca **PyGithub**, execut
 ### 1. Clonar o repositório
 
 ```bash
-git clone https://github.com/RSC-SC/IADev-MiniProj-Mod2.git
-cd IADev-MiniProj-Mod2
+git clone https://github.com/RSC-SC/IADev-ProjFinal-Mod2.git
+cd IADev-ProjFinal-Mod2
 ```
 
 ### 2. Instalar dependências
@@ -117,7 +122,18 @@ OPENROUTER_API_KEY=sua_chave_aqui    # Opcional (fallback gratuito)
 
 ```bash
 python main.py https://github.com/dono/repositorio
+
+# Opcional: limitar quantos PRs revisar nesta execução (padrão: 3)
+python main.py https://github.com/dono/repositorio --max-prs 5
 ```
+
+## Cenários de Uso
+
+Os dois cenários oficiais — **fluxo principal** (repo com PRs abertos) e
+**cenário de risco/falha** (URL inválida, quota excedida → fallback, API
+instável, repo sem PRs) — estão documentados em
+[`docs/cenarios.md`](docs/cenarios.md), incluindo comportamento observável
+de cada falha.
 
 ## Exemplo de Entrada
 
@@ -140,6 +156,15 @@ O comentário postado no PR:
 
 ```markdown
 ## 🤖 Revisão Automática de Código
+
+### 📋 Metadados do PR
+- **PR:** #12 — feat: exemplo
+- **Link:** https://github.com/dono/repo/pull/12
+- **Arquivos alterados:** 2
+- **Linhas no diff:** +34 / -6 (48 linhas totais)
+- **Complexidade estimada:** Pequena
+
+---
 
 ## Pontos Positivos
 - Boa utilização de tipos no Python

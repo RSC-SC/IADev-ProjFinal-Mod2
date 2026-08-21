@@ -6,6 +6,11 @@ from src.tools.memory_tool import save_review
 
 
 def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
+    # Fan-in: este nó recebe edges dos ramos paralelos (análise e metadados).
+    # Se o ramo de análise sinalizou erro, nada deve ser publicado.
+    if state.get("error_message"):
+        return {}
+
     pr = state["current_pr"]
     review = state["current_review"]
     metadata = state.get("current_metadata_summary", "")
