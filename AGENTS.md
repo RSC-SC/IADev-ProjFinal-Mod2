@@ -8,63 +8,72 @@ Sempre que for realizada uma alteração no código deste projeto, o seguinte fl
    - Descrever a tarefa com título e descrição claros
    - Adicionar labels se aplicável
 
-2. **Criar branch a partir de `dev`**
-   - Nome padrão: `feature/<descricao-curta>` ou `fix/<descricao-curta>`
+2. **Criar branch a partir de `develop`**
+   - Nome padrão: `feature/<descricao-curta>`, `fix/<descricao-curta>` ou `docs/<descricao-curta>`
 
 3. **Implementar a alteração**
    - Fazer checkout na branch criada
    - Implementar o código conforme definido na Issue
 
 4. **Commit**
-   - Usar mensagens semânticas claras (ex: `feat:`, `fix:`, `docs:`, `refactor:`)
+   - Usar mensagens semânticas claras (ex: `feat:`, `fix:`, `docs:`, `refactor:`, `chore:`)
 
-5. **Criar Pull Request para `dev`**
+5. **Criar Pull Request para `develop`**
    - PR deve referenciar a Issue (ex: `Closes #1`)
    - Descrever as mudanças realizadas
 
 6. **Documentar na Issue**
    - Atualizar a Issue com o link do PR e status da implementação
 
+7. **Integração**
+   - `feature/*` → `develop` (via PR)
+   - `develop` → `main` apenas em marcos estáveis (versão final obrigatoriamente na `main`)
+
 ---
 
-## 📌 Sessão Atual — 09/07/2026
+## 📌 Contexto Atual — Projeto Final Módulo 2
 
-### ✅ Concluído
+| Item | Valor |
+|------|-------|
+| **Repositório** | https://github.com/RSC-SC/IADev-ProjFinal-Mod2 |
+| **Fase** | Evolução do Mini-Projeto (entregue 20/07/26) → Projeto Final |
+| **Prazo** | 31/08/2026 às 15h (submissão no AVA) |
+| **Peso** | 60% da nota do módulo |
+| **Fluxo Git** | `main` ← `develop` ← `feature/*` |
 
-| Issue | Título | PR | Status |
-|-------|--------|----|--------|
-| #1 | Estruturar projeto do Agente Revisor de PRs | [#2](https://github.com/RSC-SC/IADev-MiniProj-Mod2/pull/2) | ✅ Mergeado |
-| #4 | Corrigir autenticação PyGithub e fluxo de validação | [#5](https://github.com/RSC-SC/IADev-MiniProj-Mod2/pull/5) | ✅ Mergeado |
-| #6 | Suporte multi-provedor LLM (Gemini + OpenRouter) | [#7](https://github.com/RSC-SC/IADev-MiniProj-Mod2/pull/7) | 🔄 PR Aberto |
-| #3 | Testar e validar execução do agente | — | ✅ Testado |
+> O plano detalhado de trabalho (8 fases), a análise de gaps contra a rubrica e o log de decisões estão no documento externo `PLANO_PROJETO_FINAL_MOD2.md` (fora do repositório).
 
-### 🧪 Testes Realizados
-- **URL inválida** → rejeita sem chamar API ✅
-- **URL sem PRs** → informa corretamente ✅
-- **Gemini com quota excedida (429)** → fallback para OpenRouter ✅
-- **Review completo postado** em https://github.com/RSC-SC/testeAgentePR/pull/1 ✅
+### ✅ Baseline (Mini-Projeto concluído)
+- Agente LangGraph funcional: valida URL → lista PRs abertos → analisa diff com LLM → posta review no PR
+- Fallback LLM: Gemini 2.0 Flash → OpenRouter (`nemotron-3-super-120b-a12b:free`)
+- Memória: histórico de revisões em JSON (`reviews/`) injetado no prompt
+- README completo (escopo mini), prompts documentados, apresentação em `docs/`
 
 ### 📂 Estrutura do Projeto
 ```
-Miniprojeto_Mod02/
-├── .env.example              # GITHUB_TOKEN, GOOGLE_API_KEY, OPENROUTER_API_KEY
-├── .gitignore
-├── requirements.txt          # langgraph, langchain-google-genai, langchain-openai, PyGithub
+IADev-ProjFinal-Mod2/
+├── .env.example              # GITHUB_TOKEN, GOOGLE_API_KEY, OPENROUTER_API_KEY, OPENROUTER_MODEL
+├── .gitignore                # Ignora .env e enunciados (.md/.pdf)
+├── requirements.txt          # langgraph, langchain-google-genai, langchain-openai, PyGithub, python-dotenv
 ├── AGENTS.md                 # Este arquivo (instruções do fluxo)
 ├── main.py                   # CLI: python main.py <url-do-repo>
+├── reviews/                  # Histórico de revisões (JSON, gerado automaticamente)
 ├── docs/
-│   └── prompts.md            # Registro dos prompts utilizados
+│   ├── prompts.md            # Registro dos prompts utilizados
+│   └── Agente Revisor de PRs.pptx/pdf  # Apresentação (2 slides)
 └── src/
     ├── state.py              # PRReviewState (TypedDict)
     ├── graph.py              # Grafo LangGraph com validação + loop
     ├── nodes/
     │   ├── validation.py     # Valida URL e pelo menos uma chave LLM
     │   ├── pr_collector.py   # Busca PRs abertos + coleta diff
+    │   ├── history_loader.py # Carrega histórico de revisões
     │   ├── code_analyzer.py  # Análise com fallback Gemini → OpenRouter
-    │   ├── comment_poster.py # Posta review no PR
+    │   ├── comment_poster.py # Posta review no PR + salva no histórico
     │   └── finish.py         # Encerra execução
     └── tools/
-        └── github_tool.py    # Wrapper PyGithub (Auth.Token)
+        ├── github_tool.py    # Wrapper PyGithub (Auth.Token)
+        └── memory_tool.py    # Leitura/escrita do histórico JSON
 ```
 
 ### 🔧 Stack Técnica
@@ -72,18 +81,23 @@ Miniprojeto_Mod02/
 - **LLM Primário:** Google Gemini 2.0 Flash (via `langchain-google-genai`)
 - **LLM Fallback:** OpenRouter — `nvidia/nemotron-3-super-120b-a12b:free` (via `langchain-openai`)
 - **API GitHub:** PyGithub 2.9+ (`Auth.Token`)
-- **Python:** 3.10.5
+- **Python:** 3.10+
 
-### 📋 Pendências / Próximos Passos
-1. ⬜ **Mergear PR #7** (multi-provedor) em dev
-2. ⬜ **README.md** — documentação completa do projeto
-3. ⬜ **docs/prompts.md** — revisar/adicionar prompts
-4. ⬜ **Apresentação (2 slides)** — problema, agente, fluxo, ferramentas
-5. ⬜ **Criar .env com chave OpenRouter** para evitar depender do Gemini
-6. ⬜ **Limpar branches locais** antigas (feature/estrutura-inicial-projeto, fix/autenticacao-pygithub-fluxo-validacao, feature/teste-validacao-agente)
+### 📋 Roadmap do Projeto Final (resumo — detalhes no plano externo)
 
-### 🌿 Branches Ativas
-| Branch | Base | Status |
-|--------|------|--------|
-| `feature/multi-provedor-gemini-openrouter` | dev | 🔄 Ativa (PR #7 aberto) |
-| `feature/teste-validacao-agente` | dev | 🗑️ Obsoleta (pode deletar) |
+| Fase | Escopo | Status |
+|------|--------|--------|
+| F0 | Preparação: branches main/develop, AGENTS.md, prompts.md, Kanban | 🔄 Em andamento |
+| F1 | Paralelização no grafo + robustez GitHubTool + 2 cenários documentados | ⬜ |
+| F2 | Sanitização anti prompt-injection + limites de autonomia (--dry-run) | ⬜ |
+| F3 | Logs estruturados JSON + auditoria com latência (2 sinais correlacionados) | ⬜ |
+| F4 | Testes pytest gerados/refinados com IA + review do próprio agente em PR real | ⬜ |
+| F5 | Pipeline CI (lint/testes/build) + análise de logs por IA + anomalia + risco | ⬜ |
+| F6 | Automação low-code n8n integrada (trigger + saída observável) | ⬜ |
+| F7 | README final, refinamentos documentados, merge main, vídeo, submissão AVA | ⬜ |
+
+### 🌿 Branches
+| Branch | Papel |
+|--------|-------|
+| `main` | Produção — versão final avaliada |
+| `develop` | Integração — base das feature branches |
