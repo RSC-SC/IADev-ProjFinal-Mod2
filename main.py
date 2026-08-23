@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.graph import build_graph
+from src.tools.observability import get_observer
 
 
 def parse_args():
@@ -53,11 +54,40 @@ def main():
         "review_history": [],
     }
 
-    result = graph.invoke(initial_state)
+    # Observabilidade (Issue #14): abre os dois sinais correlacionados por
+    # run_id — log estruturado JSONL + registro de auditoria com latências.
+    observer = get_observer()
+    run_id = observer.start_run(
+        repo_url=args.repo_url, dry_run=bool(args.dry_run),
+        max_prs=max(1, args.max_prs),
+    )
+    print(f"[obs] run_id={run_id} — sinais sendo gravados em ./logs/")
+
+    status = "ok"
+    try:
+        result = graph.invoke(initial_state)
+    except Exception as e:  # crash inesperado: auditoria registra o evento
+        status = "crashed"
+        result = {
+            "error_message": f"Execução interrompida por erro inesperado: {e}",
+            "processed_prs_count": 0,
+            "repo_owner": "",
+            "repo_name": "",
+        }
+
+    paths = observer.finish_run(
+        status=status,
+        processed_prs=result.get("processed_prs_count", 0),
+        final_message=result.get("error_message", ""),
+        repo_owner=result.get("repo_owner", ""),
+        repo_name=result.get("repo_name", ""),
+    )
 
     print("\n" + "=" * 50)
     print(result.get("error_message", "Revisão concluída com sucesso!"))
     print("=" * 50)
+    print(f"[obs] Log estruturado : {paths['structured_log']}")
+    print(f"[obs] Auditoria       : {paths['audit']}")
 
 
 if __name__ == "__main__":

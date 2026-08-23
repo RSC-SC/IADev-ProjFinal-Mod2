@@ -164,6 +164,26 @@ Complementos de governança:
 Detalhes completos (modelo de ameaça + payload adversarial demonstrado): [`docs/seguranca.md`](docs/seguranca.md)
 e evidência empírica em [`docs/evidencias/fase2_seguranca_evidencia.md`](docs/evidencias/fase2_seguranca_evidencia.md).
 
+## Observabilidade — Dois Sinais Correlacionados
+
+Toda execução produz **dois sinais de observabilidade correlacionados por um `run_id` único**:
+
+| Sinal | Arquivo | Conteúdo |
+|-------|---------|----------|
+| **Log estruturado (JSONL)** | `logs/run_<run_id>.jsonl` | Um evento JSON por linha: `run_start`, `node_start`, `node_end` (+`duration_ms`), `error`, `llm_provider_result/success` (fallback), `security_alert`, `run_end` |
+| **Registro de auditoria (JSON)** | `logs/audit_<run_id>.json` | Consolidação da execução: latência total e por nó (mín/média/máx), provedores LLM usados, contagem de fallbacks, alertas de segurança, nós com erro, desfecho (`succeeded`/`failed`) |
+
+Como os sinais se correlacionam: todo evento carrega o mesmo `run_id` + timestamp
+ISO-8601 UTC + `node` + `pr_number`; a auditoria referencia o caminho exato do
+JSONL da mesma execução em `artifacts.structured_log`. Isso permite reconstruir
+o fluxo, as decisões, os erros e a latência de qualquer execução passada.
+
+Garantias: escritas **thread-safe** (compatíveis com o fan-out paralelo do grafo),
+*best-effort* (falha de log jamais derruba a execução) e sem segredos nos artefatos.
+
+Investigação real de uma execução documentada em:
+[`docs/evidencias/observabilidade.md`](docs/evidencias/observabilidade.md)
+
 ## Exemplo de Entrada
 
 ```bash
@@ -173,12 +193,15 @@ python main.py https://github.com/RSC-SC/testeAgentePR
 ## Exemplo de Saída
 
 ```
+[obs] run_id=20260823_193500_ab12cd34 — sinais sendo gravados em ./logs/
 Provedor Gemini falhou: ... RESOURCE_EXHAUSTED ... (fallback para OpenRouter)
 Tentando provedor LLM: OpenRouter
 
 ==================================================
 Revisão concluída. 1 PR(s) processado(s) com sucesso.
 ==================================================
+[obs] Log estruturado : ...\logs\run_20260823_193500_ab12cd34.jsonl
+[obs] Auditoria       : ...\logs\audit_20260823_193500_ab12cd34.json
 ```
 
 O comentário postado no PR:
@@ -220,6 +243,8 @@ O comentário postado no PR:
 | **Sanitização em 3 camadas** | Detecção regex + neutralização + envelope `<untrusted_content>`: conteúdo externo não sobrepõe as regras da aplicação |
 | **`--dry-run`** como limite de autonomia | Revisão gerada só é publicada com aprovação humana explícita |
 | **Seção 🛡️ no comentário** | Transparência: autor do PR fica ciente de tentativas de manipulação neutralizadas |
+| **Dois sinais correlacionados por `run_id`** | JSONL estruturado (sequência exata de eventos) + auditoria consolidada (latências e desfecho) permitem investigar qualquer execução |
+| **Instrumentação via wrapper no grafo** | Latência/eventos medidos centralmente em `build_graph()` — os nós permanecem focados na lógica de negócio |
 
 ## Limitações da Solução
 
@@ -236,27 +261,29 @@ IADev-ProjFinal-Mod2/
 ├── .env.example              # Template de variáveis de ambiente
 ├── .gitignore                # Arquivos ignorados pelo Git
 ├── requirements.txt          # Dependências do projeto
-├── main.py                   # Ponto de entrada (CLI, com --dry-run)
+├── main.py                   # Ponto de entrada (CLI, com --dry-run e ciclo de vida de observabilidade)
 ├── reviews/                  # Histórico de revisões (JSON, gerado automaticamente)
+├── logs/                     # Sinais de observabilidade por execução (JSONL + auditoria, gerados a cada run)
 ├── docs/
 │   ├── prompts.md            # Registro dos prompts utilizados
 │   ├── seguranca.md          # Modelo de ameaça + defesas anti prompt-injection
 │   ├── cenarios.md           # Cenários de uso (fluxo principal + falhas)
-│   └── evidencias/           # Evidências empíricas por fase
+│   └── evidencias/           # Evidências empíricas por fase (segurança, observabilidade)
 └── src/
     ├── state.py              # Estado compartilhado (TypedDict)
-    ├── graph.py              # Grafo LangGraph
+    ├── graph.py              # Grafo LangGraph (nós instrumentados com observabilidade)
     ├── nodes/
     │   ├── validation.py     # Validação de entrada
     │   ├── pr_collector.py   # Coleta de PRs e diffs
-    │   ├── diff_sanitizer.py # 🛡️ Sanitização anti prompt-injection
+    │   ├── diff_sanitizer.py # 🛡️ Sanitização anti prompt-injection (+ security_alert)
     │   ├── history_loader.py # Carrega histórico de revisões
-    │   ├── code_analyzer.py  # Análise de código com LLM (prompt blindado)
+    │   ├── code_analyzer.py  # Análise de código com LLM (prompt blindado + eventos de fallback)
     │   ├── metadata_summarizer.py # Sumário determinístico (ramo paralelo)
     │   ├── comment_poster.py # Postagem de comentários (+ modo dry-run)
     │   └── finish.py         # Encerramento
     └── tools/
         ├── github_tool.py    # Wrapper da API GitHub (PyGithub)
         ├── sanitizer.py      # 🛡️ Detecção/neutralização de injeção (puro, testável)
+        ├── observability.py  # 📊 Dois sinais correlacionados: JSONL estruturado + auditoria com latência
         └── memory_tool.py    # Leitura/escrita de histórico em JSON
 ```
