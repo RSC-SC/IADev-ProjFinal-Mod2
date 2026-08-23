@@ -86,7 +86,7 @@ O agente utiliza a **API do GitHub** por meio da biblioteca **PyGithub**, execut
 | Componente | Tecnologia |
 |------------|------------|
 | Framework do Agente | LangGraph (StateGraph) |
-| LLM Primário | Google Gemini 2.0 Flash |
+| LLM Primário | Google Gemini (`GOOGLE_MODEL`, padrão `gemini-3.6-flash`) |
 | LLM Fallback | OpenRouter — nvidia/nemotron-3-super-120b-a12b:free |
 | API GitHub | PyGithub 2.9+ |
 | Linguagem | Python 3.10+ |

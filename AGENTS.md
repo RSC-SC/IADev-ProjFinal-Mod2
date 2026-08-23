@@ -80,7 +80,7 @@ IADev-ProjFinal-Mod2/
 
 ### 🔧 Stack Técnica
 - **Framework:** LangGraph (StateGraph)
-- **LLM Primário:** Google Gemini 2.0 Flash (via `langchain-google-genai`)
+- **LLM Primário:** Google Gemini (`GOOGLE_MODEL`, padrão `gemini-3.6-flash`, via `langchain-google-genai`)
 - **LLM Fallback:** OpenRouter — `nvidia/nemotron-3-super-120b-a12b:free` (via `langchain-openai`)
 - **API GitHub:** PyGithub 2.9+ (`Auth.Token`)
 - **Python:** 3.10+
