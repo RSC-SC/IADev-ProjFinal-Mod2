@@ -10,8 +10,11 @@ class PRReviewState(TypedDict):
     pending_prs: List[Dict[str, Any]]
     current_pr: Dict[str, Any]
     current_diff: str
+    current_diff_sanitized: str  # diff higienizado anti prompt-injection
+    security_report: Dict[str, Any]  # sinais de injeção detectados no diff atual
     current_review: str
     current_metadata_summary: str  # gerado em paralelo à análise do diff
     processed_prs_count: int
     max_prs: int  # limite explícito de iterações do loop (autonomia delimitada)
+    dry_run: bool  # limites de autonomia: True = gera revisão, NÃO posta no GitHub
     review_history: List[Dict[str, Any]]

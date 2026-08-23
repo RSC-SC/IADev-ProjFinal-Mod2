@@ -3,6 +3,7 @@ from src.state import PRReviewState
 from src.nodes.validation import validar_entrada
 from src.nodes.pr_collector import buscar_prs_pendentes
 from src.nodes.pr_collector import coletar_diff_pr
+from src.nodes.diff_sanitizer import sanitizar_diff
 from src.nodes.code_analyzer import analisar_codigo
 from src.nodes.metadata_summarizer import resumir_metadados
 from src.nodes.comment_poster import postar_comentario
@@ -43,6 +44,7 @@ def build_graph() -> StateGraph:
     builder.add_node("buscar_prs_pendentes", buscar_prs_pendentes)
     builder.add_node("carregar_historico", carregar_historico)
     builder.add_node("coletar_diff_pr", coletar_diff_pr)
+    builder.add_node("sanitizar_diff", sanitizar_diff)
     builder.add_node("analisar_codigo", analisar_codigo)
     builder.add_node("resumir_metadados", resumir_metadados)
     builder.add_node("postar_comentario", postar_comentario)
@@ -62,9 +64,13 @@ def build_graph() -> StateGraph:
     )
     builder.add_edge("carregar_historico", "coletar_diff_pr")
 
-    # Fan-out: análise do diff (LLM) e resumo de metadados rodam EM PARALELO
-    builder.add_edge("coletar_diff_pr", "analisar_codigo")
-    builder.add_edge("coletar_diff_pr", "resumir_metadados")
+    # Governança: TODO diff passa pelo sanitizador antes de qualquer uso
+    builder.add_edge("coletar_diff_pr", "sanitizar_diff")
+
+    # Fan-out: análise do diff (LLM) e resumo de metadados rodam EM PARALELO,
+    # ambos consumindo o conteúdo JÁ SANITIZADO
+    builder.add_edge("sanitizar_diff", "analisar_codigo")
+    builder.add_edge("sanitizar_diff", "resumir_metadados")
 
     # Fan-in: ambos os ramos alimentam a postagem do comentário
     builder.add_edge("analisar_codigo", "postar_comentario")
