@@ -73,6 +73,8 @@ IADev-ProjFinal-Mod2/
     │   └── finish.py         # Encerra execução
     └── tools/
         ├── github_tool.py    # Wrapper PyGithub (Auth.Token)
+        ├── sanitizer.py      # Defesa anti prompt-injection (detecção/neutralização/envelope)
+        ├── observability.py  # Dois sinais correlacionados: JSONL estruturado + auditoria com latência
         └── memory_tool.py    # Leitura/escrita do histórico JSON
 ```
 
@@ -90,7 +92,7 @@ IADev-ProjFinal-Mod2/
 | F0 | Preparação: branches main/develop, AGENTS.md, prompts.md, Kanban | ✅ Concluída (20/08/26) |
 | F1 | Paralelização no grafo + robustez GitHubTool + 2 cenários documentados | ✅ Concluída (21/08/26) |
 | F2 | Sanitização anti prompt-injection + limites de autonomia (--dry-run) | ✅ |
-| F3 | Logs estruturados JSON + auditoria com latência (2 sinais correlacionados) | ⬜ |
+| F3 | Logs estruturados JSON + auditoria com latência (2 sinais correlacionados) | ✅ |
 | F4 | Testes pytest gerados/refinados com IA + review do próprio agente em PR real | ⬜ |
 | F5 | Pipeline CI (lint/testes/build) + análise de logs por IA + anomalia + risco | ⬜ |
 | F6 | Automação low-code n8n integrada (trigger + saída observável) | ⬜ |
