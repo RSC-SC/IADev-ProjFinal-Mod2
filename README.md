@@ -36,10 +36,15 @@ O agente é implementado com **LangGraph** (StateGraph), organizado em nós e ar
 ┌──────────────────┐
 │  coletar_diff_pr │ ◀──────────────┐
 └────────┬─────────┘                │
-         │ (fan-out)                │
-    ┌────┴─────────────┐            │
-    ▼                  ▼            │     Loop: processa cada PR
-┌──────────────────┐ ┌──────────────────────┐│   (até --max-prs)
+          │                          │
+          ▼                          │     Loop: processa cada PR
+┌──────────────────┐                │   (até --max-prs)
+│  sanitizar_diff  │ 🛡️ anti-injection│
+└────────┬─────────┘                │
+          │ (fan-out)                │
+     ┌────┴─────────────┐            │
+     ▼                  ▼            │
+┌──────────────────┐ ┌──────────────────────┐│
 │  analisar_codigo │ │  resumir_metadados   ││
 │  (LLM, lento)    │ │  (determinístico, ⚡) ││
 └────────┬─────────┘ └──────────┬───────────┘│
@@ -63,9 +68,10 @@ O agente é implementado com **LangGraph** (StateGraph), organizado em nós e ar
 | `buscar_prs_pendentes` | Lista todos os PRs abertos do repositório via API GitHub |
 | `carregar_historico` | Carrega revisões anteriores do repositório para contexto do LLM |
 | `coletar_diff_pr` | Baixa o diff do PR atual e o remove da fila de pendentes |
-| `analisar_codigo` | Envia o diff para o LLM e gera a revisão estruturada |
+| `sanitizar_diff` | **🛡️ Governança:** detecta e neutraliza tentativas de prompt-injection no diff antes de qualquer contato com o LLM |
+| `analisar_codigo` | Envia o diff sanitizado (envelope `<untrusted_content>`) ao LLM e gera a revisão estruturada |
 | `resumir_metadados` | Gera sumário determinístico do PR (arquivos, linhas, complexidade) — roda **em paralelo** à análise do LLM |
-| `postar_comentario` | Publica comentário combinando metadados + revisão no PR e salva no histórico |
+| `postar_comentario` | Publica comentário combinando metadados + revisão no PR e salva no histórico; em `--dry-run`, apenas exibe no console (aprovação humana) |
 | `encerrar_execucao` | Finaliza o processo com o resumo de PRs processados |
 
 ## Ferramenta Integrada
@@ -125,6 +131,10 @@ python main.py https://github.com/dono/repositorio
 
 # Opcional: limitar quantos PRs revisar nesta execução (padrão: 3)
 python main.py https://github.com/dono/repositorio --max-prs 5
+
+# Limite de autonomia: gera as revisões no console, mas NÃO posta no GitHub
+# (postagem só ocorre após aprovação humana, em execução sem a flag)
+python main.py https://github.com/dono/repositorio --dry-run
 ```
 
 ## Cenários de Uso
@@ -134,6 +144,25 @@ Os dois cenários oficiais — **fluxo principal** (repo com PRs abertos) e
 instável, repo sem PRs) — estão documentados em
 [`docs/cenarios.md`](docs/cenarios.md), incluindo comportamento observável
 de cada falha.
+
+## Segurança e Governança
+
+O diff de um PR é **conteúdo externo não confiável**: pode conter tentativas de
+*prompt-injection* que instruam o LLM a ignorar regras, alterar a revisão ou vazar
+segredos. A defesa é em profundidade, em 3 camadas:
+
+1. **Detecção** — regex determinísticas (EN + PT) com severidade alta/média sobre cada linha do diff;
+2. **Neutralização** — linhas maliciosas substituídas por placeholder auditável antes do LLM; relatório estruturado no estado;
+3. **Encapsulamento** — diff higienizado vai ao LLM dentro de `<untrusted_content>`, com SYSTEM_PROMPT contendo regras de segurança inultrapassáveis.
+
+Complementos de governança:
+
+- **`--dry-run`** — limita a autonomia de escrita: revisão só chega ao GitHub com aprovação humana;
+- **Transparência** — quando há sinais detectados, o comentário postado inclui a seção `🛡️ Nota de Segurança` com o total neutralizado;
+- **Auditoria** — histórico local distingue revisões postadas (`posted: true`) de geradas em dry-run (`posted: false`).
+
+Detalhes completos (modelo de ameaça + payload adversarial demonstrado): [`docs/seguranca.md`](docs/seguranca.md)
+e evidência empírica em [`docs/evidencias/fase2_seguranca_evidencia.md`](docs/evidencias/fase2_seguranca_evidencia.md).
 
 ## Exemplo de Entrada
 
@@ -188,6 +217,9 @@ O comentário postado no PR:
 | **TypedDict** para o estado | Tipagem estática do estado facilita manutenção e depuração |
 | **Regex** para validação de URL | Valida a entrada sem gastar tokens de LLM |
 | **Loop condicional** no grafo | Permite processar múltiplos PRs em uma única execução |
+| **Sanitização em 3 camadas** | Detecção regex + neutralização + envelope `<untrusted_content>`: conteúdo externo não sobrepõe as regras da aplicação |
+| **`--dry-run`** como limite de autonomia | Revisão gerada só é publicada com aprovação humana explícita |
+| **Seção 🛡️ no comentário** | Transparência: autor do PR fica ciente de tentativas de manipulação neutralizadas |
 
 ## Limitações da Solução
 
@@ -195,29 +227,36 @@ O comentário postado no PR:
 - **Modelo gratuito do OpenRouter:** pode ter latência maior e qualidade variável
 - **Análise por diff:** não considera o contexto completo do repositório, apenas as linhas alteradas
 - **Histórico local:** o histórico de revisões é armazenado em JSON local, não sincronizado entre máquinas
+- **Defesa anti-injection:** baseada em padrões conhecidos; mitiga (não elimina) injeções semânticas sofisticadas — ver `docs/seguranca.md`
 
 ## Estrutura do Projeto
 
 ```
-Miniprojeto_Mod02/
+IADev-ProjFinal-Mod2/
 ├── .env.example              # Template de variáveis de ambiente
 ├── .gitignore                # Arquivos ignorados pelo Git
 ├── requirements.txt          # Dependências do projeto
-├── main.py                   # Ponto de entrada (CLI)
+├── main.py                   # Ponto de entrada (CLI, com --dry-run)
 ├── reviews/                  # Histórico de revisões (JSON, gerado automaticamente)
 ├── docs/
-│   └── prompts.md            # Registro dos prompts utilizados
+│   ├── prompts.md            # Registro dos prompts utilizados
+│   ├── seguranca.md          # Modelo de ameaça + defesas anti prompt-injection
+│   ├── cenarios.md           # Cenários de uso (fluxo principal + falhas)
+│   └── evidencias/           # Evidências empíricas por fase
 └── src/
     ├── state.py              # Estado compartilhado (TypedDict)
     ├── graph.py              # Grafo LangGraph
     ├── nodes/
     │   ├── validation.py     # Validação de entrada
     │   ├── pr_collector.py   # Coleta de PRs e diffs
+    │   ├── diff_sanitizer.py # 🛡️ Sanitização anti prompt-injection
     │   ├── history_loader.py # Carrega histórico de revisões
-    │   ├── code_analyzer.py  # Análise de código com LLM
-    │   ├── comment_poster.py # Postagem de comentários
+    │   ├── code_analyzer.py  # Análise de código com LLM (prompt blindado)
+    │   ├── metadata_summarizer.py # Sumário determinístico (ramo paralelo)
+    │   ├── comment_poster.py # Postagem de comentários (+ modo dry-run)
     │   └── finish.py         # Encerramento
     └── tools/
         ├── github_tool.py    # Wrapper da API GitHub (PyGithub)
+        ├── sanitizer.py      # 🛡️ Detecção/neutralização de injeção (puro, testável)
         └── memory_tool.py    # Leitura/escrita de histórico em JSON
 ```
