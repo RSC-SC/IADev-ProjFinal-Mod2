@@ -31,6 +31,8 @@ def save_review(
     pr_title: str,
     review: str,
     diff_summary: str,
+    posted: bool = True,
+    mode: str = "full",
 ) -> None:
     path = _get_repo_path(repo_owner, repo_name)
     history = []
@@ -46,6 +48,11 @@ def save_review(
         "pr_title": pr_title,
         "review": review,
         "diff_summary": diff_summary[:500],
+        # Governança/auditoria da memória:
+        #   posted=False → revisão gerada em modo dry-run, nunca publicada
+        #   mode="dry_run" | "full" → contexto de geração da entrada
+        "posted": posted,
+        "mode": mode,
     }
     history.append(entry)
 

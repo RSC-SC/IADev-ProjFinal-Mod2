@@ -18,6 +18,14 @@ def parse_args():
         default=int(os.getenv("MAX_PRS", "3")),
         help="Limite máximo de PRs a revisar nesta execução (padrão: 3)",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Limite de autonomia: gera as revisões e exibe no console, mas NÃO "
+            "posta nada no GitHub (postagem só ocorre com aprovação humana)"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -35,10 +43,13 @@ def main():
         "pending_prs": [],
         "current_pr": {},
         "current_diff": "",
+        "current_diff_sanitized": "",
+        "security_report": {},
         "current_review": "",
         "current_metadata_summary": "",
         "processed_prs_count": 0,
         "max_prs": max(1, args.max_prs),
+        "dry_run": bool(args.dry_run),
         "review_history": [],
     }
 
