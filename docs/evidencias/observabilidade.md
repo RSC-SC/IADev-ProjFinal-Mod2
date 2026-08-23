@@ -98,45 +98,123 @@ Semântica dos campos de resultado:
 | A execução terminou limpa? | Sim — `status: completed` (falha de entrada ≠ crash) | Auditoria (`status`/`outcome`) |
 | Os dois sinais são da mesma execução? | Sim — mesmo `run_id`; auditoria aponta o caminho do JSONL | Ambos |
 
-## 3. Comportamento em execução completa (com PRs)
+## 3. Execução real bem-sucedida (com PRs e LLM)
 
-Em uma execução com revisão real de PRs, os mesmos mecanismos registram:
+Execução real pós-refinamento (Issue #16), modo `--dry-run --max-prs 2`, contra
+o repositório de testes com 10+ PRs abertos:
 
-- `node_end` de **cada iteração do loop** com `pr_number` correlacionado (inclusive os nós paralelos `analisar_codigo` e `resumir_metadados`);
-- **Fallback de LLM**: tentativa que falha gera `llm_provider_result` com latência e causa; a bem-sucedida gera `llm_provider_success`. A auditoria consolida em `llm.providers_succeeded`, `llm.failed_attempts` e `llm.fallback_count`;
-- **Prompt-injection neutralizado**: `security_alert` com severidades e linhas removidas, também consolidado em `audit.security_alerts`.
-
-Exemplo real capturado durante os testes da tool (PR simulado nº 42):
-
-```jsonl
-{"event": "llm_provider_result", "provider": "Gemini", "duration_ms": 120.5, "error": "429 quota exceeded", ...}
-{"event": "llm_provider_success", "provider": "OpenRouter", "duration_ms": 2310.8, ...}
-{"event": "security_alert", "pr_number": 42, "high_signals": 2, "medium_signals": 1, "removed_lines": 3, ...}
+```bash
+python main.py "https://github.com/RSC-SC/testeAgentePR" --dry-run --max-prs 2
 ```
 
-Auditoria correspondente (trecho):
+### 3.1 Sinal 1 — JSONL (`run_20260823_200020_1b6bf5b0.jsonl`, resumido)
+
+```
+20:00:20.461 run_start   repo=https://github.com/RSC-SC/testeAgentePR dry_run=true max_prs=2
+20:00:20.461 node_end    validar_entrada        0.3 ms  ok
+20:00:22.538 node_end    buscar_prs_pendentes 2065.8 ms  ok          ← API GitHub (rede)
+20:00:22.538 node_end    carregar_historico     1.0 ms  ok  pr=11
+20:00:26.373 node_end    coletar_diff_pr     3832.3 ms  ok  pr=11   ← download do diff
+20:00:26.389 node_end    sanitizar_diff        10.8 ms  ok  pr=11   🛡️
+20:00:26.404 node_start  analisar_codigo + resumir_metadados            ← FAN-OUT PARALELO (mesmo ts)
+20:00:26.404 node_end    resumir_metadados      0.1 ms  ok  pr=11    ⚡ determinístico
+20:00:39.179 llm_provider_success  provider=Gemini dur=9689ms           ← inferência LLM
+20:00:39.194 node_end    analisar_codigo    12803.8 ms  ok  pr=11
+20:00:39.210 node_end    postar_comentario     1.7 ms  ok  pr=11   ← dry-run: nada postado
+   ... (loop repete para o PR #10) ...
+20:00:54.221 llm_provider_success  provider=Gemini dur=10621ms
+20:00:54.237 node_end    encerrar_execucao      0.0 ms  ok
+20:00:54.237 run_end     total_duration_ms=33780.91 processed_prs=2
+```
+
+Reconstrução visível pelo log: fluxo sequencial → loop por PR (`pr_number`
+correlacionado em cada evento) → fan-out dos ramos paralelo (timestamps
+idênticos) → fan-in na postagem → encerramento limpo.
+
+### 3.2 Sinal 2 — Auditoria (`audit_20260823_200020_1b6bf5b0.json`)
 
 ```json
-"llm": {
-  "providers_succeeded": ["OpenRouter"],
-  "failed_attempts": [{ "provider": "Gemini", "duration_ms": 120.5, "error": "429 quota exceeded" }],
-  "fallback_count": 1
-},
-"security_alerts": [{ "pr_number": 42, "high_signals": 2, "medium_signals": 1, "removed_lines": 3 }]
+{
+  "run_id": "20260823_200020_1b6bf5b0",
+  "status": "completed", "outcome": "succeeded",
+  "processed_prs": 2,
+  "total_duration_ms": 33780.91,
+  "nodes_latency": {
+    "analisar_codigo":      { "calls": 2, "avg_ms": 12476.0, "max_ms": 12803.8 },
+    "coletar_diff_pr":      { "calls": 2, "avg_ms": 3349.4,  "max_ms": 3832.3 },
+    "buscar_prs_pendentes": { "calls": 1, "avg_ms": 2065.8 },
+    "sanitizar_diff":       { "calls": 2, "avg_ms": 5.6 },
+    "postar_comentario":    { "calls": 2, "avg_ms": 2.1 },
+    "resumir_metadados":    { "calls": 2, "avg_ms": 0.1 }
+  },
+  "llm": { "providers_succeeded": ["Gemini"], "failed_attempts": [], "fallback_count": 0 }
+}
 ```
 
-## 4. Garantias de projeto
+Leituras de operação possíveis com os dados: ~74% do tempo total é inferência
+LLM (`analisar_codigo`), o ramo paralelo de metadados é desprezível (0,1 ms),
+e cada iteração do loop custa ~16 s dominadas por rede + LLM.
+
+## 4. Fallback de LLM capturado em execução real
+
+Na primeira validação real (run `20260823_195055_2c2f6c7d`), o modelo então
+configurado respondia 404 e o fallback agiu — registrado nos dois sinais:
+
+```jsonl
+{"event": "llm_provider_result",  "provider": "Gemini",     "duration_ms": 566,  "error": "404 NOT_FOUND: models/gemini-2.0-flash is no longer available...", ...}
+{"event": "llm_provider_success", "provider": "OpenRouter", "duration_ms": 10724, ...}
+```
+
+Auditoria correspondente: `"providers_succeeded": ["OpenRouter"]`,
+`"failed_attempts": [{provider: Gemini, ...}]`, `"fallback_count": 1`.
+A execução terminou `completed/succeeded` com 2 PRs revisados via OpenRouter —
+resiliência funcionando exatamente como projetada.
+
+## 5. Ciclo de refinamento orientado por observabilidade (Issue #16)
+
+Exemplo de refinamento documentado conforme exigido pela rubrica
+(problema observado → alteração realizada → resultado obtido), com os sinais
+como fonte primária de diagnóstico:
+
+### Problema 1 — `outcome: failed` em execução bem-sucedida
+
+- **Observado:** run processou 2 PRs com sucesso, mas a auditoria registrou
+  `"outcome": "failed"` e evento `error` espúrio originado de `encerrar_execucao`.
+- **Diagnóstico pelos sinais:** o JSONL mostrou `node_end status=error` no nó de
+  encerramento sem nenhuma falha real anterior — o nó retornava a mensagem final
+  pelo campo `error_message`, que o wrapper interpreta como falha estruturada.
+- **Alteração:** novo campo `final_message` no estado; `encerrar_execucao`
+  retorna nele a mensagem final; `main.py` exibe esse campo. Erros reais
+  continuam em `error_message`.
+- **Resultado (run `20260823_200020_1b6bf5b0`):** `"outcome": "succeeded"`,
+  `nodes_with_errors: {}` e nenhum `error` espúrio no JSONL.
+
+### Problema 2 — modelo LLM primário descontinuado
+
+- **Observado:** ambas as análises caíram no fallback com `404 NOT_FOUND:
+  models/gemini-2.0-flash is no longer available` (modelo aposentado pela Google).
+- **Alteração:** modelo Gemini agora configurável via env `GOOGLE_MODEL`
+  (padrão `gemini-3.6-flash`, sugerido pela própria API), alinhado à exigência
+  de configuração por variável de ambiente; `.env.example` atualizado.
+- **Resultado:** execução seguinte completou as duas análises direto no Gemini
+  (`llm_provider_success provider=Gemini dur≈10s`, `fallback_count: 0`),
+  eliminando a dependência do fallback gratuito.
+
+## 6. Garantias de projeto
 
 - **Thread-safe**: os ramos paralelos do grafo escrevem concorrentemente; todas as escritas usam `threading.Lock`.
 - **Observabilidade nunca derruba o fluxo**: toda escrita é *best-effort* — falha de disco/caminho é silenciada e a execução prossegue.
 - **Sem segredos**: os artefatos não contêm tokens nem conteúdo de diff completo (apenas contagens e mensagens de erro).
 - **`logs/` fora do git** (`.gitignore`): artefatos de runtime não poluem o repositório; evidências selecionadas vão para `docs/evidencias/`.
 
-## 5. Como reproduzir
+## 7. Como reproduzir
 
 ```bash
 # Cenário de falha controlada (não exige chaves):
 python main.py "https://github.com/exemplo_repo_invalido"
+
+# Cenário completo real (com chaves configuradas no .env):
+python main.py "https://github.com/RSC-SC/testeAgentePR" --dry-run --max-prs 2
 
 # Inspecionar os sinais:
 cat logs/run_<run_id>.jsonl

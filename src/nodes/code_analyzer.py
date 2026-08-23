@@ -56,8 +56,11 @@ def _try_gemini() -> Optional[BaseChatModel]:
         return None
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
+        # Refinamento (Issue #16): modelo via env — gemini-2.0-flash foi
+        # descontinuado pela Google (HTTP 404 detectado em execução real).
+        model = os.getenv("GOOGLE_MODEL", "gemini-3.6-flash")
         return ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            model=model,
             google_api_key=api_key
         )
     except Exception as e:

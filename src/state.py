@@ -18,3 +18,4 @@ class PRReviewState(TypedDict):
     max_prs: int  # limite explícito de iterações do loop (autonomia delimitada)
     dry_run: bool  # limites de autonomia: True = gera revisão, NÃO posta no GitHub
     review_history: List[Dict[str, Any]]
+    final_message: str  # mensagem final da execução (sucesso OU falha) — distinta de error_message

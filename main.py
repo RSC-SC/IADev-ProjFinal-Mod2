@@ -52,6 +52,7 @@ def main():
         "max_prs": max(1, args.max_prs),
         "dry_run": bool(args.dry_run),
         "review_history": [],
+        "final_message": "",
     }
 
     # Observabilidade (Issue #14): abre os dois sinais correlacionados por
@@ -69,7 +70,7 @@ def main():
     except Exception as e:  # crash inesperado: auditoria registra o evento
         status = "crashed"
         result = {
-            "error_message": f"Execução interrompida por erro inesperado: {e}",
+            "final_message": f"Execução interrompida por erro inesperado: {e}",
             "processed_prs_count": 0,
             "repo_owner": "",
             "repo_name": "",
@@ -78,13 +79,13 @@ def main():
     paths = observer.finish_run(
         status=status,
         processed_prs=result.get("processed_prs_count", 0),
-        final_message=result.get("error_message", ""),
+        final_message=result.get("final_message", ""),
         repo_owner=result.get("repo_owner", ""),
         repo_name=result.get("repo_name", ""),
     )
 
     print("\n" + "=" * 50)
-    print(result.get("error_message", "Revisão concluída com sucesso!"))
+    print(result.get("final_message", "Revisão concluída com sucesso!"))
     print("=" * 50)
     print(f"[obs] Log estruturado : {paths['structured_log']}")
     print(f"[obs] Auditoria       : {paths['audit']}")
