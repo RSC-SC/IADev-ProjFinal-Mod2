@@ -12,6 +12,7 @@ import logging
 from typing import Dict, Any
 
 from src.state import PRReviewState
+from src.tools.observability import get_observer
 from src.tools.sanitizer import sanitize_diff
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,16 @@ def sanitizar_diff(state: PRReviewState) -> Dict[str, Any]:
         "removed_lines": result.removed_lines,
         "findings": result.findings,
     }
+
+    # Observabilidade: neutralizações viram evento `security_alert` no log
+    # estruturado e entrada na auditoria da execução (correlação por run_id).
+    if result.has_findings:
+        get_observer().security_alert(
+            pr_number if isinstance(pr_number, int) else None,
+            high_signals=result.high_signals,
+            medium_signals=result.medium_signals,
+            removed_lines=result.removed_lines,
+        )
 
     return {
         "current_diff_sanitized": result.sanitized_text,

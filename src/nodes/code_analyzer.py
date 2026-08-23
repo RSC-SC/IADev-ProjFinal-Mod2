@@ -1,10 +1,12 @@
 import os
+import time
 import logging
 from typing import Dict, Any, List, Optional
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from src.state import PRReviewState
+from src.tools.observability import get_observer
 from src.tools.sanitizer import wrap_untrusted
 
 logger = logging.getLogger(__name__)
@@ -85,16 +87,23 @@ def _try_openrouter() -> Optional[BaseChatModel]:
 
 
 def _invoke_with_fallback(messages, providers) -> str:
+    obs = get_observer()
     last_error = None
     for name, try_fn in providers:
         llm = try_fn()
         if llm is None:
             continue
+        t0 = time.perf_counter()
         try:
             logger.info(f"Tentando provedor LLM: {name}")
             response = llm.invoke(messages)
+            # Observabilidade: sucesso do provedor + latência da inferência
+            obs.llm_attempt(name, True, (time.perf_counter() - t0) * 1000)
             return response.content
         except Exception as e:
+            duration_ms = (time.perf_counter() - t0) * 1000
+            # Observabilidade: fallback registrada nos DOIS sinais
+            obs.llm_attempt(name, False, duration_ms, error=str(e))
             logger.warning(f"Provedor {name} falhou: {e}")
             last_error = e
     raise RuntimeError(

@@ -54,3 +54,6 @@ AGENTS.md
 
 # Review history (JSON gerado automaticamente)
 reviews/
+
+# Observabilidade (JSONL/auditoria gerados a cada execução)
+logs/
