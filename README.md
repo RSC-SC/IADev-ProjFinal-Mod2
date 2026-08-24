@@ -184,6 +184,29 @@ Garantias: escritas **thread-safe** (compatíveis com o fan-out paralelo do graf
 Investigação real de uma execução documentada em:
 [`docs/evidencias/observabilidade.md`](docs/evidencias/observabilidade.md)
 
+## ⚙️ DevOps e CI — Pipeline com Análise de Logs por IA
+
+O repositório possui pipeline **GitHub Actions** (`.github/workflows/ci.yml`) com três
+etapas paralelas acionadas a cada PR/push:
+
+| Etapa | O que faz | Artefato |
+|-------|-----------|----------|
+| **Lint** | `ruff check .` (config justificada em `pyproject.toml`) | `log-lint` |
+| **Testes** | suíte offline de 102 testes (~1s no CI) | `log-pytest` |
+| **Build/validação** | `compileall` + smoke de importação do grafo (sem rede/chaves) | `log-build` |
+
+Destaques de projeto:
+- **Zero segredos no pipeline**: os testes são offline por construção (Fase 4), então o
+  CI roda sem nenhuma credencial exposta.
+- Cada etapa publica seu log como artefato, permitindo **análise posterior por IA**
+  (leitura técnica, hipóteses de anomalia e ações recomendadas) — evidência real em
+  [`docs/evidencias/fase5_devops.md`](docs/evidencias/fase5_devops.md), incluindo a
+  detecção da diferença de tempo da suíte entre runner Linux (0,94 s) e Windows local.
+- `scripts/pipeline_log_analyzer.py` analisa os sinais de observabilidade da aplicação
+  (seção anterior): **detecção robusta de anomalias** (mediana/MAD), tendência de
+  latência e estimativa transparente de risco de falha em múltiplas visões
+  (bruto × operacional × estado atual).
+
 ## Exemplo de Entrada
 
 ```bash

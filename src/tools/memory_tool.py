@@ -1,7 +1,6 @@
 import json
 import os
-from typing import List, Dict, Any
-
+from typing import Any, Dict, List
 
 REVIEWS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "reviews")
 
@@ -17,10 +16,10 @@ def load_history(repo_owner: str, repo_name: str, limit: int = 5) -> List[Dict[s
     if not os.path.exists(path):
         return []
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return data[-limit:]
-    except (json.JSONDecodeError, IOError):
+    except (OSError, json.JSONDecodeError):
         return []
 
 
@@ -38,9 +37,9 @@ def save_review(
     history = []
     if os.path.exists(path):
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 history = json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             history = []
 
     entry = {

@@ -1,9 +1,9 @@
+import logging
 import re
 import time
-import logging
-from typing import List, Dict, Any, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
 
-from github import Github, Auth, GithubException
+from github import Auth, Github, GithubException
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class GitHubTool:
         try:
             self.client = Github(auth=Auth.Token(token), timeout=timeout, per_page=50)
         except Exception as e:
-            raise GitHubToolError("inicializacao", str(e))
+            raise GitHubToolError("inicializacao", str(e)) from e
 
     # ------------------------------------------------------------------ #
     # Validação de entradas

@@ -167,3 +167,27 @@ Restrições:
   posta com aprovação humana explícita.
 - Comportamento adversarial esperado deve estar documentado com evidência real.
 ```
+
+---
+
+## 9. Prompt de Analise de Logs de CI por IA (Fase 5)
+
+```
+Fase 5 (criterio 13): analise dos logs das etapas do pipeline CI por IA.
+
+Insumo: logs brutos extraidos via 'gh run view <run_id> --log' (primeira
+execucao real do workflow, PR #19, run 32790103818) - secoes das etapas
+lint (ruff), testes (pytest) e build/validacao.
+
+Instrucao a IA:
+- Leia os trechos de cada etapa e produza leitura tecnica com: (a)
+  observacoes factiveis do proprio log; (b) hipoteses explicativas quando
+  houver anomalia, ordenadas por plausibilidade; (c) acao recomendada ou
+  declaracao explicita de que nenhuma acao e necessaria.
+- Compare com execucoes locais conhecidas quando fizer sentido (ex.:
+  tempo da suite pytest local ~7-9,5s vs 0,94s no runner).
+- Nao invente numeros: todo valor citado deve existir no log analisado.
+
+Resultado completo (trechos + leituras + leitura cruzada):
+docs/evidencias/fase5_devops.md, secao 2.
+```

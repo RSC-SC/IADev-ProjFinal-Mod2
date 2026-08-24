@@ -94,7 +94,7 @@ IADev-ProjFinal-Mod2/
 | F2 | Sanitização anti prompt-injection + limites de autonomia (--dry-run) | ✅ |
 | F3 | Logs estruturados JSON + auditoria com latência (2 sinais correlacionados) | ✅ |
 | F4 | Testes pytest gerados/refinados com IA + review do próprio agente em PR real | ✅ Suíte 102 testes em /tests (docs/qa/) |
-| F5 | Pipeline CI (lint/testes/build) + análise de logs por IA + anomalia + risco | ⬜ |
+| F5 | Pipeline CI (lint/testes/build) + análise de logs por IA + anomalia + risco | ✅ CI verde no PR #19 (evidência em docs/evidencias/fase5_devops.md) |
 | F6 | Automação low-code n8n integrada (trigger + saída observável) | ⬜ |
 | F7 | README final, refinamentos documentados, merge main, vídeo, submissão AVA | ⬜ |
 
