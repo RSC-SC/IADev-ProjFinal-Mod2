@@ -1,0 +1,27 @@
+# Configuração de ferramentas de desenvolvimento (Fase 5 — DevOps Inteligente)
+# O pytest continua configurado em pytest.ini (compatibilidade com suíte existente).
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["logs", "reviews", "__pycache__", ".pytest_cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    # Linhas longas: aceitas caso a caso (URLs longas em docstrings/mensagens);
+    # o limite orientador de 100 colunas permanece configurado acima.
+    "E501",
+    # Modernizacao de type hints (PEP 585/604): o codigo-fonte usa o estilo
+    # classico de typing.List/Optional de forma consistente desde o mini-projeto.
+    # Migracao em massa ficaria fora do escopo da fase e poluiria o diff;
+    # reavaliar em refactor dedicado.
+    "UP006",
+    "UP035",
+    "UP045",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# main.py carrega variaveis de ambiente (load_dotenv) ANTES dos imports de
+# src/* por design — os modulos leem env na importacao.
+"main.py" = ["E402"]
