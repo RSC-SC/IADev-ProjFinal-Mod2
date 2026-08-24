@@ -60,7 +60,7 @@ INJECTION_RULES = [
         "alta",
         "token especial de template de chat",
     ),
-    # --- ALTA: vazamento de segredos/instruções internas ---
+    # --- ALTA: vazamento/exfiltração de segredos ---
     (
         r"(?i)\b(?:reveal|print|show|repeat|display|output|dump)\b[^.\n]{0,50}"
         r"\b(?:your\s+)?(?:system\s+prompt|initial\s+instructions?|"
@@ -69,16 +69,18 @@ INJECTION_RULES = [
         "tentativa de extrair o system prompt",
     ),
     # --- ALTA: exfiltração de credenciais ---
+    # Refinamento (F4/QA): aceita separador em branco ("api key") e plurais
+    # ("credentials", "tokens") — gap descoberto por teste adversarial.
     (
         r"(?i)\b(?:send|post|upload|export|exfiltrate|leak|forward)\b[^.\n]{0,80}"
-        r"\b(?:api[_-]?key|token|secret|credential|password|\.env)\b",
+        r"\b(?:api[\s_-]?keys?|tokens?|secrets?|credentials?|passwords?|\.env)\b",
         "alta",
         "possivel exfiltracao de credenciais/secrets",
     ),
     # --- ALTA: comandos de rede lendo segredos locais (curl/wget/.env etc.) ---
     (
         r"(?i)(?:curl|wget|requests\.(?:post|put|get)|urllib|http\.client)"
-        r"[^\n]{0,120}(?:\.env|secret|token|api[_-]?key|credential|passwd)",
+        r"[^\n]{0,120}(?:\.env|secrets?|tokens?|api[\s_-]?key|credentials?|passwd)",
         "alta",
         "comando de rede com acesso a segredos (.env/token)",
     ),
@@ -92,7 +94,7 @@ INJECTION_RULES = [
     ),
     (
         r"(?i)\bvoc[êe]\s+(?:agora\s+)?(?:é|e|ser[áa]|vai\s+ser)\b"
-        r"|\bfinja\s+(?:que\s+)?(?:é|e|ser)\b|\ba\s+partir\s+de\s+agora\b",
+        r"|\bfinja\b|\ba\s+partir\s+de\s+agora\b",
         "alta",
         "tentativa de sequestrar o papel do modelo (PT)",
     ),

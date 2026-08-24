@@ -1,0 +1,4 @@
+# Dependencias de desenvolvimento/QA (Fase 4 — QA Inteligente)
+# Instalacao: pip install -r requirements-dev.txt
+-r requirements.txt
+pytest>=8.0
