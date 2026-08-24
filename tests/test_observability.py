@@ -11,14 +11,12 @@ execução observada. Estes testes travam as duas garantias:
 import json
 import threading
 
-import pytest
-
 from src.tools import observability
 from src.tools.observability import RunObserver, get_observer
 
 
 def read_jsonl(path):
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 

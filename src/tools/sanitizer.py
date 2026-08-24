@@ -23,7 +23,7 @@ O sanitizador é determinístico e puro (sem rede, sem LLM) — 100% testável.
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 # ---------------------------------------------------------------------------
 # Camada 1 — Regras de detecção

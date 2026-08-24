@@ -11,10 +11,10 @@ outcome: failed (falso-positivo). Estes testes travam a semântica:
 import json
 
 import pytest
+from conftest import base_state
 
 from src.graph import _instrumented
 from src.nodes.finish import encerrar_execucao
-from conftest import base_state
 
 
 class TestEncerrarExecucao:
@@ -91,8 +91,8 @@ class TestWrapperInstrumentado:
             wrapped(base_state())
         # o evento exception foi registrado no sinal 1 (JSONL)
         eventos = [
-            json.loads(l)
-            for l in open(fresh_observer._jsonl_path, encoding="utf-8")
+            json.loads(line)
+            for line in open(fresh_observer._jsonl_path, encoding="utf-8")
         ]
         fins = [e for e in eventos if e["event"] == "node_end"
                 and e.get("node") == "analisar_codigo"]
@@ -113,8 +113,8 @@ class TestWrapperInstrumentado:
         state = base_state(current_pr={"number": 123, "title": "t"})
         _instrumented("sanitizar_diff", lambda s: {})(state)
         eventos = [
-            json.loads(l)
-            for l in open(fresh_observer._jsonl_path, encoding="utf-8")
+            json.loads(line)
+            for line in open(fresh_observer._jsonl_path, encoding="utf-8")
         ]
         assert all(e.get("pr_number") == 123 for e in eventos
                    if e["event"].startswith("node_"))

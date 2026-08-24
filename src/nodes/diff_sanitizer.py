@@ -9,7 +9,7 @@ defesa anti prompt-injection (detecção + neutralização + encapsulamento).
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 from src.state import PRReviewState
 from src.tools.observability import get_observer

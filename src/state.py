@@ -1,4 +1,4 @@
-from typing import TypedDict, List, Dict, Any
+from typing import Any, Dict, List, TypedDict
 
 
 class PRReviewState(TypedDict):

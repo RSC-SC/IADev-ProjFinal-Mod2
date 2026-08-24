@@ -1,18 +1,18 @@
 import time
 from typing import Callable, Optional
 
-from langgraph.graph import StateGraph, END
-from src.state import PRReviewState
-from src.tools.observability import get_observer
-from src.nodes.validation import validar_entrada
-from src.nodes.pr_collector import buscar_prs_pendentes
-from src.nodes.pr_collector import coletar_diff_pr
-from src.nodes.diff_sanitizer import sanitizar_diff
+from langgraph.graph import END, StateGraph
+
 from src.nodes.code_analyzer import analisar_codigo
-from src.nodes.metadata_summarizer import resumir_metadados
 from src.nodes.comment_poster import postar_comentario
+from src.nodes.diff_sanitizer import sanitizar_diff
 from src.nodes.finish import encerrar_execucao
 from src.nodes.history_loader import carregar_historico
+from src.nodes.metadata_summarizer import resumir_metadados
+from src.nodes.pr_collector import buscar_prs_pendentes, coletar_diff_pr
+from src.nodes.validation import validar_entrada
+from src.state import PRReviewState
+from src.tools.observability import get_observer
 
 
 def _is_valid(state: PRReviewState) -> str:

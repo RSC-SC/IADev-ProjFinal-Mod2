@@ -1,5 +1,6 @@
 import os
-from typing import Dict, Any
+from typing import Any, Dict
+
 from src.state import PRReviewState
 from src.tools.github_tool import GitHubTool, GitHubToolError
 from src.tools.memory_tool import save_review
@@ -104,9 +105,7 @@ def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
 
     try:
         tool = GitHubTool(os.getenv("GITHUB_TOKEN"))
-        result = tool.post_comment(
-            state["repo_owner"], state["repo_name"], pr["number"], body
-        )
+        tool.post_comment(state["repo_owner"], state["repo_name"], pr["number"], body)
     except GitHubToolError as e:
         # Falha estruturada: não conta o PR nem salva histórico; termina limpo
         return {

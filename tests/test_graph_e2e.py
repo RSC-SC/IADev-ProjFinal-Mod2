@@ -24,8 +24,8 @@ import json
 from types import SimpleNamespace
 
 import pytest
-
 from conftest import base_state
+
 from src.graph import build_graph
 from src.tools.github_tool import GitHubToolError
 
@@ -68,9 +68,9 @@ def make_fake_github_tool(prs, diffs_by_number):
         def get_pr_diff(self, owner, repo_name, pr_number):
             try:
                 return diffs_by_number[pr_number]
-            except KeyError:
+            except KeyError as err:
                 raise GitHubToolError("get_pr_diff",
-                                      f"sem diff p/ #{pr_number}", 404)
+                                      f"sem diff p/ #{pr_number}", 404) from err
 
         def post_comment(self, owner, repo_name, pr_number, body):
             FakeGitHubTool.posted_comments.append((pr_number, body))
@@ -80,7 +80,7 @@ def make_fake_github_tool(prs, diffs_by_number):
 
 
 def read_jsonl(path):
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 

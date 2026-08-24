@@ -132,7 +132,7 @@ class TestRetryLimitado:
         # (rate limit do GitHub em token sem permissão) é PERMANENTE p/ CLI.
         flaky = FakeFlakyRepo(fail_times=99, status=403)
         tool.client = flaky
-        with pytest.raises(GitHubToolError) as exc:
+        with pytest.raises(GitHubToolError):
             tool.get_open_prs("dono", "repo")
         assert flaky.calls == 1
 

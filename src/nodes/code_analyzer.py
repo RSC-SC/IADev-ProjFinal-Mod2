@@ -1,9 +1,10 @@
+import logging
 import os
 import time
-import logging
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, Optional
+
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from src.state import PRReviewState
 from src.tools.observability import get_observer
