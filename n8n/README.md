@@ -148,8 +148,31 @@ O workflow gera logs em:
 2. Configure as credenciais do Slack
 3. Envie mensagem com status do review
 
+## 📚 Documentação Adicional
+
+| Documento | Descrição |
+|-----------|-----------|
+| [GUIA_COMPLETO.md](GUIA_COMPLETO.md) | Guia detalhado de configuração e uso |
+| [EXEMPLO_RAPIDO.md](EXEMPLO_RAPIDO.md) | Configuração em 5 minutos |
+| [DIAGRAMA_WORKFLOW.md](DIAGRAMA_WORKFLOW.md) | Diagrama visual do workflow |
+| [configurar.ps1](configurar.ps1) | Script de configuração automática |
+
+## 🚀 Início Rápido
+
+```bash
+# 1. Configurar ambiente
+.\configurar.ps1
+
+# 2. Iniciar servidor (opcional)
+.\configurar.ps1 -Server
+
+# 3. Testar integração
+.\configurar.ps1 -Test
+```
+
 ## Referências
 
 - [n8n Documentation](https://docs.n8n.io/)
 - [GitHub Webhooks](https://docs.github.com/en/webhooks)
 - [GitHub Pull Reviews API](https://docs.github.com/en/rest/pulls/reviews)
+- [Agente Revisor de PRs - README](../README.md)
