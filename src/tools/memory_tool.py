@@ -1,7 +1,6 @@
 import json
 import os
-from typing import List, Dict, Any
-
+from typing import Any, Dict, List
 
 REVIEWS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "reviews")
 
@@ -17,10 +16,10 @@ def load_history(repo_owner: str, repo_name: str, limit: int = 5) -> List[Dict[s
     if not os.path.exists(path):
         return []
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
         return data[-limit:]
-    except (json.JSONDecodeError, IOError):
+    except (OSError, json.JSONDecodeError):
         return []
 
 
@@ -31,14 +30,16 @@ def save_review(
     pr_title: str,
     review: str,
     diff_summary: str,
+    posted: bool = True,
+    mode: str = "full",
 ) -> None:
     path = _get_repo_path(repo_owner, repo_name)
     history = []
     if os.path.exists(path):
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 history = json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             history = []
 
     entry = {
@@ -46,6 +47,11 @@ def save_review(
         "pr_title": pr_title,
         "review": review,
         "diff_summary": diff_summary[:500],
+        # Governança/auditoria da memória:
+        #   posted=False → revisão gerada em modo dry-run, nunca publicada
+        #   mode="dry_run" | "full" → contexto de geração da entrada
+        "posted": posted,
+        "mode": mode,
     }
     history.append(entry)
 

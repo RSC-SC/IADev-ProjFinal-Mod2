@@ -1,0 +1,100 @@
+# CI — Projeto Final Módulo 2 (Fase 5 — DevOps Inteligente, Issue #7)
+#
+# Pipeline com 3 etapas independentes (lint, testes, build/validação).
+# Os testes são 100% offline (suíte da Fase 4), então NENHUM segredo é
+# necessário aqui — redução de superfície de ataque do próprio pipeline.
+# Cada etapa salva seu log como artefato para análise posterior por IA
+# (ver docs/evidencias/fase5_devops.md).
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar dependências
+        run: pip install -r requirements-dev.txt
+
+      - name: Verificar código com ruff
+        run: |
+          set -o pipefail
+          python -m ruff check . 2>&1 | tee lint_output.txt
+
+      - name: Salvar log do lint como artefato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-lint
+          path: lint_output.txt
+
+  test:
+    name: Testes (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar dependências
+        run: pip install -r requirements-dev.txt
+
+      - name: Rodar suíte offline (102 testes)
+        run: |
+          set -o pipefail
+          python -m pytest tests -v 2>&1 | tee pytest_output.txt
+
+      - name: Salvar log dos testes como artefato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-pytest
+          path: pytest_output.txt
+
+  build-validate:
+    name: Build e validação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar dependências de produção
+        run: pip install -r requirements.txt
+
+      - name: Byte-compilar todos os módulos
+        run: |
+          set -o pipefail
+          python -m compileall -q src main.py 2>&1 | tee build_output.txt
+
+      - name: Smoke de importação (grafo compila sem rede/chaves)
+        run: |
+          set -o pipefail
+          python -c "from src.graph import build_graph; app = build_graph(); print('Grafo compilado:', type(app).__name__)" 2>&1 | tee build_output.txt
+
+      - name: Salvar log do build como artefato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-build
+          path: build_output.txt

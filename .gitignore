@@ -45,10 +45,15 @@ env/
 .env
 
 # Project specific files
-IA PARA DESENVOLVEDORES.pdf
-IA PARA DESENVOLVEDORES.md
+Mini-Projeto Mod2.pdf
+Mini-Projeto Mod2.md
+Projeto Final Mod2.pdf
+Projeto Final Mod2.md
 LLM.md
 AGENTS.md
 
 # Review history (JSON gerado automaticamente)
 reviews/
+
+# Observabilidade (JSONL/auditoria gerados a cada execução)
+logs/
