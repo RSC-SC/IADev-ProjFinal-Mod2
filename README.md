@@ -277,6 +277,45 @@ O comentário postado no PR:
 - **Histórico local:** o histórico de revisões é armazenado em JSON local, não sincronizado entre máquinas
 - **Defesa anti-injection:** baseada em padrões conhecidos; mitiga (não elimina) injeções semânticas sofisticadas — ver `docs/seguranca.md`
 
+## Automação com n8n
+
+O agente pode ser integrado à plataforma de automação low-code **n8n** para execução automática sempre que um PR for aberto ou atualizado:
+
+```
+GitHub (PR Event) → n8n Webhook → Execute Agent → Post Review → Notification
+```
+
+### Configuração Rápida
+
+1. Importe o workflow: `n8n/workflow_pr_review.json`
+2. Configure a credencial GitHub Token no n8n
+3. Adicione o webhook no GitHub (Settings → Webhooks)
+4. Ative o workflow
+
+Documentação completa: [`n8n/README.md`](n8n/README.md) | [`n8n/GUIA_COMPLETO.md`](n8n/GUIA_COMPLETO.md)
+
+## Testes
+
+O projeto possui **102 testes pytest** executados 100% offline:
+
+```bash
+# Executar todos os testes
+pytest tests/ -v
+
+# Executar com cobertura
+pytest tests/ --cov=src --cov-report=html
+```
+
+| Módulo | Testes | Prioridade |
+|--------|--------|------------|
+| Sanitizer (anti injection) | 38 | Crítica |
+| GitHub Tool | 26 | Alta |
+| Grafo E2E | 18 | Alta |
+| Observabilidade | 11 | Média |
+| Finish/Wrapper | 9 | Média |
+
+Detalhes: [`docs/qa/processo_qa_ia.md`](docs/qa/processo_qa_ia.md)
+
 ## Estrutura do Projeto
 
 ```
@@ -287,11 +326,26 @@ IADev-ProjFinal-Mod2/
 ├── main.py                   # Ponto de entrada (CLI, com --dry-run e ciclo de vida de observabilidade)
 ├── reviews/                  # Histórico de revisões (JSON, gerado automaticamente)
 ├── logs/                     # Sinais de observabilidade por execução (JSONL + auditoria, gerados a cada run)
+├── n8n/                      # Integração com n8n (automação low-code)
+│   ├── workflow_pr_review.json  # Workflow exportável
+│   ├── agent_adapter.py      # Script de integração
+│   └── README.md             # Documentação de uso
+├── tests/                    # 102 testes pytest (offline)
+│   ├── test_sanitizer.py     # 38 testes do sanitizador
+│   ├── test_github_tool.py   # 26 testes da ferramenta GitHub
+│   ├── test_graph_e2e.py     # 18 testes E2E do grafo
+│   ├── test_observability.py # 11 testes de observabilidade
+│   └── test_finish_and_wrapper.py # 9 testes auxiliares
+├── scripts/
+│   └── pipeline_log_analyzer.py # Análise de logs com anomalia/risco
 ├── docs/
 │   ├── prompts.md            # Registro dos prompts utilizados
 │   ├── seguranca.md          # Modelo de ameaça + defesas anti prompt-injection
 │   ├── cenarios.md           # Cenários de uso (fluxo principal + falhas)
-│   └── evidencias/           # Evidências empíricas por fase (segurança, observabilidade)
+│   ├── qa/                   # Processo de QA com IA
+│   └── evidencias/           # Evidências empíricas por fase
+├── .github/workflows/
+│   └── ci.yml                # Pipeline CI (lint + testes + build)
 └── src/
     ├── state.py              # Estado compartilhado (TypedDict)
     ├── graph.py              # Grafo LangGraph (nós instrumentados com observabilidade)
@@ -310,3 +364,24 @@ IADev-ProjFinal-Mod2/
         ├── observability.py  # 📊 Dois sinais correlacionados: JSONL estruturado + auditoria com latência
         └── memory_tool.py    # Leitura/escrita de histórico em JSON
 ```
+
+## Roadmap do Projeto Final
+
+| Fase | Escopo | Status |
+|------|--------|--------|
+| F0 | Preparação: branches, AGENTS.md, prompts.md | ✅ |
+| F1 | Paralelização + robustez GitHubTool + cenários | ✅ |
+| F2 | Sanitização anti prompt-injection + --dry-run | ✅ |
+| F3 | Logs estruturados JSON + auditoria com latência | ✅ |
+| F4 | Testes pytest (102) gerados/refinados com IA | ✅ |
+| F5 | Pipeline CI + análise de logs por IA | ✅ |
+| F6 | Automação n8n integrada (trigger + saída observável) | ✅ |
+| F7 | README final, refinamentos, merge main, submissão | ✅ |
+
+## Créditos
+
+Desenvolvido como Projeto Final do Módulo 2 - **IA para Desenvolvedores** (SCTEC).
+
+---
+
+*Agente Revisor de PRs v2.0 — Automação de code review com IA*
