@@ -6,11 +6,9 @@ Este script testa a integração do agente com o n8n, simulando webhooks
 e validando o fluxo de execução.
 """
 
-import json
-import requests
 import sys
-import time
-from typing import Dict, Any
+
+import requests
 
 
 def test_health_check(base_url: str) -> bool:
@@ -78,7 +76,7 @@ def test_direct_execution(repo_url: str, dry_run: bool = True) -> bool:
     try:
         from agent_adapter import AgentAdapter
 
-        print(f"🤖 Testando execução direta do agente...")
+        print("🤖 Testando execução direta do agente...")
         print(f"   Repositório: {repo_url}")
         print(f"   Modo: {'dry-run' if dry_run else 'produção'}")
 
@@ -90,7 +88,7 @@ def test_direct_execution(repo_url: str, dry_run: bool = True) -> bool:
         )
 
         if result.get("status") == "success":
-            print(f"✅ Execução bem-sucedida")
+            print("✅ Execução bem-sucedida")
             print(f"   Run ID: {result.get('run_id')}")
             print(f"   Tempo: {result.get('execution_time', 0):.2f}s")
             print(f"   PRs processados: {result.get('processed_prs', 0)}")

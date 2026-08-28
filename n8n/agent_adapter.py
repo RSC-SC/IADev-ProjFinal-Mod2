@@ -17,9 +17,8 @@ import argparse
 import json
 import os
 import sys
-import threading
 import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict
 
 from dotenv import load_dotenv
