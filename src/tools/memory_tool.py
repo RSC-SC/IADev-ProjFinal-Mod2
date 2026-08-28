@@ -23,6 +23,29 @@ def load_history(repo_owner: str, repo_name: str, limit: int = 5) -> List[Dict[s
         return []
 
 
+def _review_to_text(review: Any) -> str:
+    """Normaliza o review para STRING antes de persistir.
+
+    O `response.content` do LLM pode ser uma lista de blocos de conteúdo
+    (ex.: [{"type": "text", "text": "..."}]) dependendo do provider/versão
+    da lib. Gravar esse vetor diretamente corrompe o histórico e quebra a
+    montagem do contexto no nó `analisar_codigo` (bug de produção:
+    "can only concatenate list (not \"str\") to list"). Normaliza aqui na
+    ORIGEM, garantindo que o armazenamento seja sempre texto plano.
+    """
+    if isinstance(review, str):
+        return review
+    if isinstance(review, (list, tuple)):
+        parts = []
+        for block in review:
+            if isinstance(block, dict):
+                parts.append(block.get("text", ""))
+            else:
+                parts.append(str(block))
+        return "".join(parts)
+    return str(review)
+
+
 def save_review(
     repo_owner: str,
     repo_name: str,
@@ -45,7 +68,7 @@ def save_review(
     entry = {
         "pr_number": pr_number,
         "pr_title": pr_title,
-        "review": review,
+        "review": _review_to_text(review),
         "diff_summary": diff_summary[:500],
         # Governança/auditoria da memória:
         #   posted=False → revisão gerada em modo dry-run, nunca publicada
