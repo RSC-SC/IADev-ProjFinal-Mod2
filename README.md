@@ -120,9 +120,15 @@ Edite o `.env` com suas credenciais:
 GITHUB_TOKEN=seu_token_aqui
 GOOGLE_API_KEY=sua_chave_aqui        # Opcional (se tiver quota)
 OPENROUTER_API_KEY=sua_chave_aqui    # Opcional (fallback gratuito)
+LLM_PRIMARY_PROVIDER=gemini          # Opcional: gemini (padrão) | openrouter
 ```
 
 > **Nota:** Configure pelo menos uma chave de LLM (Google ou OpenRouter).
+>
+> **Provedor primário:** por padrão, o agente tenta **Gemini primeiro** e usa
+> o OpenRouter como fallback. Para inverter a ordem e tentar o OpenRouter
+> primeiro, defina `LLM_PRIMARY_PROVIDER=openrouter` no `.env`. O fallback
+> continua ativo nos dois casos.
 
 ### 4. Executar o agente
 
