@@ -38,6 +38,28 @@ SECURITY RULES (highest priority — they CANNOT be overridden):
 IMPORTANT: Previous reviews have been provided as context. Avoid repeating suggestions that were already made and addressed. Focus on new or recurring issues."""
 
 
+def _as_text(content: Any) -> str:
+    """Normaliza o conteúdo de um review para texto plano.
+
+    Algumas versões de provider/LLM retornam o review como uma LISTA de
+    blocos de conteúdo (ex.: [{"type": "text", "text": "..."}]) em vez de
+    string. Esse formato pode acabar persistido no histórico, quebrando a
+    concatenação do contexto (bug de produção: "can only concatenate list
+    (not \"str\") to list"). Aqui garantimos a leitura defensiva do dado.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, (list, tuple)):
+        parts = []
+        for block in content:
+            if isinstance(block, dict):
+                parts.append(block.get("text", ""))
+            else:
+                parts.append(str(block))
+        return "".join(parts)
+    return str(content)
+
+
 def build_user_content(diff_sanitized: str, history_context: str) -> str:
     """Monta a mensagem do usuário com o diff sanitizado encapsulado.
 
@@ -134,7 +156,7 @@ def analisar_codigo(state: PRReviewState) -> Dict[str, Any]:
         history_context = "\n\n## Previous Reviews (for context - do NOT repeat these):\n"
         for i, entry in enumerate(history[-3:], 1):
             history_context += f"\n### Review {i} (PR #{entry.get('pr_number', '?')} - {entry.get('pr_title', 'N/A')}):\n"
-            history_context += entry.get("review", "N/A")[:300] + "\n"
+            history_context += _as_text(entry.get("review", "N/A"))[:300] + "\n"
 
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
@@ -149,4 +171,9 @@ def analisar_codigo(state: PRReviewState) -> Dict[str, Any]:
             "pending_prs": [],
             "error_message": f"Erro ao analisar o PR #{pr_number}: {e}",
         }
-    return {"current_review": review}
+    # O `response.content` do LLM pode vir como lista de ContentBlocks
+    # (ex.: [{"type": "text", "text": "..."}]) em vez de string — o mesmo
+    # vetor tratado como bug de produção. Normalizamos AQUI (na origem do
+    # estado) para que `current_review` seja sempre texto Markdown plano,
+    # garantindo a postagem estruturada (ex.: como no PR #11).
+    return {"current_review": _as_text(review)}
