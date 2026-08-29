@@ -139,10 +139,26 @@ def _invoke_with_fallback(messages, providers) -> str:
 
 
 def _get_providers():
-    return [
+    """Lista de provedores LLM na ordem de tentativa.
+
+    O provedor primário é controlado por LLM_PRIMARY_PROVIDER:
+      - ausente/vazio/'gemini' → Gemini primeiro (comportamento padrão);
+      - 'openrouter'           → OpenRouter primeiro, Gemini como fallback;
+      - outro valor            → padrão (Gemini primeiro), com log de aviso.
+    """
+    providers = [
         ("Gemini", _try_gemini),
         ("OpenRouter", _try_openrouter),
     ]
+    primary = (os.getenv("LLM_PRIMARY_PROVIDER") or "gemini").strip().lower()
+    if primary == "openrouter":
+        providers.reverse()
+    elif primary != "gemini":
+        logger.warning(
+            "LLM_PRIMARY_PROVIDER inválido: '%s'. Usando padrão (gemini).",
+            primary,
+        )
+    return providers
 
 
 def analisar_codigo(state: PRReviewState) -> Dict[str, Any]:
