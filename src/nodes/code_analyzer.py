@@ -171,4 +171,9 @@ def analisar_codigo(state: PRReviewState) -> Dict[str, Any]:
             "pending_prs": [],
             "error_message": f"Erro ao analisar o PR #{pr_number}: {e}",
         }
-    return {"current_review": review}
+    # O `response.content` do LLM pode vir como lista de ContentBlocks
+    # (ex.: [{"type": "text", "text": "..."}]) em vez de string — o mesmo
+    # vetor tratado como bug de produção. Normalizamos AQUI (na origem do
+    # estado) para que `current_review` seja sempre texto Markdown plano,
+    # garantindo a postagem estruturada (ex.: como no PR #11).
+    return {"current_review": _as_text(review)}

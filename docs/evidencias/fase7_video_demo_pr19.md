@@ -65,13 +65,34 @@ O agente postou o comentário **"🤖 Revisão Automática de Código"** no PR #
 
 > O agente detectou exatamente os problemas plantados — demonstrando valor real do code review automatizado.
 
-## 4. Sequência de segurança (dry-run / autonomia)
+## 4. Re-execução — review postado com estrutura (após correção)
+
+Na primeira postagem (run `20260829_193149_e49137a3`), o corpo do review saiu
+**sem estrutura**: o `response.content` do Gemini veio como **lista de
+ContentBlocks** (`[{type: "text", "text": ...}]`) em vez de `str`, e o comentário
+continha o *repr* da lista, sem o Markdown.
+
+**Causa raiz:** `analisar_codigo` retornava `current_review` sem normalizar, e o
+`comment_poster` serializava a lista no `f-string`. O fix anterior (`600b4e2`)
+só cobria o histórico, não o `current_review` da postagem.
+
+**Correção aplicada** (PR #28, Issue #27):
+1. `src/nodes/code_analyzer.py` — `_as_text` no `current_review` (origem do estado).
+2. `src/nodes/comment_poster.py` — `_review_to_text` defensivo antes de montar o corpo.
+3. +3 testes de regressão (`tests/test_memory_concatenacao.py`). Suíte total: **111 passed**; ruff limpo; CI verde no PR #28.
+
+**Re-execução (run `20260829_194605_4fa1ccd8`):** após remover o comentário
+"não estruturado", o agente republicou a revisão **estruturada** no PR #19
+(Markdown limpo, mesmo padrão do PR #11): desfecho `succeeded`, Gemini, 0 erros,
+0 alertas de segurança, ~25,7 s.
+
+## 5. Sequência de segurança (dry-run / autonomia)
 
 Também foi validado em modo **`--dry-run`** (run `20260829_192728_fe6d04ba`):
 o review foi **gerado e exibido no console sem postar nada no GitHub**,
 confirmando o limite de autonomia (aprovação humana antes de publicar).
 
-## 5. Uso no vídeo
+## 6. Uso no vídeo
 
 - Roteiro de gravação: `docs/ROTEIRO_VIDEO.md` (material de gravação, fora do versionamento).
 - O PR #19 foi criado como alvo fresco de demonstração; como é o PR aberto mais
