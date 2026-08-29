@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 from src.state import PRReviewState
 from src.tools.github_tool import GitHubTool, GitHubToolError
-from src.tools.memory_tool import save_review
+from src.tools.memory_tool import _review_to_text, save_review
 
 
 def _security_section(security_report: Dict[str, Any]) -> str:
@@ -61,7 +61,10 @@ def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
         return {}
 
     pr = state["current_pr"]
-    review = state["current_review"]
+    # Camada defensiva: garante que o review seja sempre markdown plano,
+    # mesmo que `current_review` venha como lista de ContentBlocks (ex.:
+    # provider que retorna [{"type": "text", "text": "..."}] em vez de str).
+    review = _review_to_text(state["current_review"])
     metadata = state.get("current_metadata_summary", "")
     dry_run = bool(state.get("dry_run", False))
 

@@ -144,3 +144,115 @@ class TestAnalisarCodigoResilienteAoHistorico:
         _, human = model.calls[0]
         assert "texto de string normal" in human.content
         assert "## bloco lista" in human.content
+
+
+# --------------------------------------------------------------------------- #
+# Regressão PR #19: response.content como LISTA de ContentBlocks no RESULTADO
+# --------------------------------------------------------------------------- #
+# Contexto real (demo do vídeo, PR #19 — testeAgentePR): o Gemini devolveu
+# `response.content` como lista de blocos [{"type": "text", "text": "..."}]
+# em vez de string. A normalização existente só cobria o histórico; o
+# `current_review` ia cru para o post, gerando um markdown "sujo" (repr de
+# lista) no comentário do GitHub. Correção: `_as_text` na origem do estado +
+# `_review_to_text` defensivo no comment_poster.
+class RecordingListModel:
+    """ChatModel fake que devolve response.content como LISTA de ContentBlocks
+    (o comportamento real observado no PR #19)."""
+
+    def __init__(self, blocks=None):
+        self.blocks = blocks or [
+            {"type": "text", "text": "## Pontos Positivos\n- Código limpo.\n"}
+        ]
+
+    def invoke(self, messages):
+        return SimpleNamespace(content=self.blocks)
+
+
+class TestCurrentReviewNormalizadoParaPostagem:
+    def test_analisar_codigo_normaliza_lista_de_blocks(self, monkeypatch):
+        """Regressão PR #19: current_review deve vir SEMPRE como markdown string."""
+        from src.nodes.code_analyzer import analisar_codigo
+
+        blocks = [
+            {"type": "text", "text": "## Pontos Positivos\n- Código limpo.\n"},
+            {"type": "text", "text": "## Oportunidades\n- Usar unicodedata.\n"},
+        ]
+        model = RecordingListModel(blocks)
+        monkeypatch.setattr(
+            "src.nodes.code_analyzer._get_providers",
+            lambda: [("FakeLLM", lambda: model)],
+        )
+
+        state = base_state(
+            current_pr={"number": 19, "title": "TextUtils"},
+            current_diff_sanitized="+x = 1\n",
+            review_history=[],
+        )
+
+        out = analisar_codigo(state)
+        assert isinstance(out["current_review"], str)
+        assert out["current_review"] == (
+            "## Pontos Positivos\n- Código limpo.\n"
+            "## Oportunidades\n- Usar unicodedata.\n"
+        )
+
+    def test_analisar_codigo_string_continua_intacta(self, monkeypatch):
+        from src.nodes.code_analyzer import analisar_codigo
+
+        model = RecordingModel(content="## ok\n- texto")
+        monkeypatch.setattr(
+            "src.nodes.code_analyzer._get_providers",
+            lambda: [("FakeLLM", lambda: model)],
+        )
+        state = base_state(
+            current_pr={"number": 20, "title": "X"},
+            current_diff_sanitized="+x\n",
+        )
+        out = analisar_codigo(state)
+        assert out["current_review"] == "## ok\n- texto"
+
+    def test_postar_comentario_body_limpo_com_review_lista(self, monkeypatch):
+        """Regressão PR #19: o BODY montado usa markdown plano, não o repr."""
+        from src.nodes.comment_poster import postar_comentario
+
+        posted = []
+
+        class FakeGitHubTool:
+            def __init__(self, token):  # noqa: ANN001
+                assert token
+
+            def post_comment(self, owner, repo_name, pr_number, body):
+                posted.append(body)
+
+        monkeypatch.setattr(
+            "src.nodes.comment_poster.GitHubTool", FakeGitHubTool
+        )
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        monkeypatch.setenv("GITHUB_TOKEN", "test-token-fake")
+
+        state = base_state(
+            repo_owner="RSC-SC",
+            repo_name="testeAgentePR",
+            current_pr={"number": 19, "title": "TextUtils"},
+            current_metadata_summary="- **PR:** #19",
+            current_review=[
+                {"type": "text", "text": "## Pontos Positivos\n- Código limpo.\n"},
+                {"type": "text", "text": "## Oportunidades\n- Usar unicodedata.\n"},
+            ],
+            current_diff="+x = 1\n",
+            dry_run=False,
+        )
+
+        out = postar_comentario(state)
+        assert out["processed_prs_count"] == 1
+        assert len(posted) == 1
+        body = posted[0]
+        # Não deve conter o repr da lista:
+        assert "'type': 'text'" not in body
+        assert "extras" not in body
+        assert "[{" not in body
+        # Deve conter o markdown real:
+        assert "## 🤖 Revisão Automática de Código" in body
+        assert "## Pontos Positivos" in body
+        assert "## Oportunidades" in body
+        assert "Usar unicodedata" in body
