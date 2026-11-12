@@ -81,6 +81,7 @@ def base_state(**overrides):
         "dry_run": False,
         "review_history": [],
         "final_message": "",
+        "processed_reviews": [],
     }
     state.update(overrides)
     return state

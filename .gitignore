@@ -60,3 +60,6 @@ reviews/
 
 # Observabilidade (JSONL/auditoria gerados a cada execução)
 logs/
+
+# Aider temporários
+.aider*
