@@ -121,8 +121,9 @@ class RunObserver:
         # (construção, serialização ou escrita) jamais derruba o fluxo.
         with self._lock:
             self._active = False
+            audit: Dict[str, Any] = {}
             try:
-                audit: Dict[str, Any] = {
+                audit = {
                     "run_id": self.run_id,
                     "started_at": self._started_iso,
                     "finished_at": _now_iso(),
@@ -149,11 +150,11 @@ class RunObserver:
                         sorted(self._nodes_with_errors.items())
                     ),
                     "llm": {
-                        "providers_succeeded": self._llm_providers_used,
-                        "failed_attempts": self._llm_failed_attempts,
+                        "providers_succeeded": list(self._llm_providers_used),
+                        "failed_attempts": list(self._llm_failed_attempts),
                         "fallback_count": len(self._llm_failed_attempts),
                     },
-                    "security_alerts": self._security_alerts,
+                    "security_alerts": list(self._security_alerts),
                     # Correlação explícita entre os dois sinais:
                     "artifacts": {"structured_log":
                                   _safe_relpath(self._jsonl_path)},
@@ -164,7 +165,11 @@ class RunObserver:
             except Exception:
                 pass
 
-        return {"structured_log": self._jsonl_path, "audit": self._audit_path}
+        return {
+            "structured_log": self._jsonl_path,
+            "audit": self._audit_path,
+            "audit_data": audit,
+        }
 
     # ------------------------------------------------------------------ #
     # Eventos dos nós (instrumentação central no grafo)
@@ -262,3 +267,115 @@ def get_observer() -> RunObserver:
         if _observer is None:
             _observer = RunObserver()
         return _observer
+
+
+def format_terminal_report(
+    audit: Dict[str, Any],
+    processed_reviews: Optional[List[Dict[str, Any]]] = None,
+    history_path: str = "",
+) -> str:
+    """Gera um relatório completo e estruturado para exibição no terminal.
+
+    Seções geradas:
+    1. 📊 RESUMO DA EXECUÇÃO
+    2. ⏱️ LATÊNCIA POR NÓ NO GRAFO
+    3. 🤖 REVISÃO PUBLICADA NO PR
+    4. 📁 ARTEFATOS DE OBSERVABILIDADE GERADOS
+    """
+    reviews = processed_reviews or []
+    lines: List[str] = []
+    sep_double = "=" * 70
+    sep_single = "-" * 70
+
+    # 1. Resumo da Execução
+    lines.append(sep_double)
+    lines.append("📊 RESUMO DA EXECUÇÃO")
+    lines.append(sep_double)
+
+    repo_info = audit.get("repo", {}) or {}
+    repo_url = repo_info.get("url") or "N/A"
+    status = audit.get("status", "unknown")
+    outcome = audit.get("outcome", "unknown")
+    processed_count = audit.get("processed_prs", 0)
+    total_ms = audit.get("total_duration_ms", 0.0)
+    duration_s = round(total_ms / 1000.0, 2)
+
+    llm_info = audit.get("llm", {}) or {}
+    providers = ", ".join(llm_info.get("providers_succeeded", [])) or "Nenhum"
+    fallbacks = llm_info.get("fallback_count", 0)
+    alerts_count = len(audit.get("security_alerts", []) or [])
+
+    lines.append(f"• Repositório:         {repo_url}")
+    lines.append(f"• Status / Desfecho:   {status} · {outcome}")
+    lines.append(f"• PR(s) Processado(s): {processed_count}")
+    lines.append(f"• Duração Total:       {duration_s}s ({total_ms:.1f} ms)")
+    lines.append(f"• Provedor(es) LLM:    {providers} (fallbacks: {fallbacks})")
+    lines.append(f"• Alertas Segurança:   {alerts_count}")
+
+    # 2. Latência por Nó no Grafo
+    lines.append("\n" + sep_single)
+    lines.append("⏱️ LATÊNCIA POR NÓ NO GRAFO")
+    lines.append(sep_single)
+
+    nodes_latency = audit.get("nodes_latency", {}) or {}
+    if nodes_latency:
+        lines.append(f"{'Nó':<26} {'Chamadas':>8} {'Média (ms)':>12} {'Total (ms)':>12}")
+        lines.append("-" * 62)
+        for node_name, stats in nodes_latency.items():
+            calls = stats.get("calls", 0)
+            avg_ms = stats.get("avg_ms", 0.0)
+            node_total = stats.get("total_ms", 0.0)
+            lines.append(f"{node_name:<26} {calls:>8} {avg_ms:>12.2f} {node_total:>12.2f}")
+    else:
+        lines.append("• Nenhum nó registrado com métricas de latência.")
+
+    # 3. Revisão Publicada no PR
+    lines.append("\n" + sep_single)
+    lines.append("🤖 REVISÃO PUBLICADA NO PR")
+    lines.append(sep_single)
+
+    if reviews:
+        for idx, item in enumerate(reviews, 1):
+            pr_num = item.get("pr_number") or "?"
+            pr_title = item.get("pr_title") or ""
+            is_dry = item.get("dry_run", False)
+            mode_str = "[DRY-RUN] Simulação — Não postado no GitHub" if is_dry else "[PUBLICADO] Postado no GitHub via API"
+
+            title_part = f" — {pr_title}" if pr_title else ""
+            lines.append(f"PR #{pr_num}{title_part}")
+            lines.append(f"Status: {mode_str}")
+
+            metadata = str(item.get("metadata", "") or "").strip()
+            if metadata:
+                lines.append(f"Metadados: {metadata}")
+
+            review_text = str(item.get("review", "") or "").strip()
+            if review_text:
+                lines.append("\n" + review_text)
+
+            if idx < len(reviews):
+                lines.append("\n" + "~" * 50)
+    else:
+        lines.append("• Nenhuma revisão gerada para publicação nesta execução.")
+
+    # 4. Artefatos de Observabilidade Gerados
+    lines.append("\n" + sep_single)
+    lines.append("📁 ARTEFATOS DE OBSERVABILIDADE GERADOS")
+    lines.append(sep_single)
+
+    artifacts = audit.get("artifacts", {}) or {}
+    log_path = artifacts.get("structured_log") or "N/A"
+    lines.append(f"• Log Estruturado (JSONL) : {log_path}")
+    if "audit_path" in audit and audit["audit_path"]:
+        lines.append(f"• Auditoria e Métricas   : {audit['audit_path']}")
+    if history_path:
+        lines.append(f"• Histórico de Revisões   : {history_path}")
+
+    final_msg = audit.get("final_message", "")
+    if final_msg:
+        lines.append("\n" + sep_double)
+        lines.append(f"Mensagem Final: {final_msg}")
+        lines.append(sep_double)
+
+    return "\n".join(lines)
+

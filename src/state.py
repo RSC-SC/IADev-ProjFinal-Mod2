@@ -19,3 +19,4 @@ class PRReviewState(TypedDict):
     dry_run: bool  # limites de autonomia: True = gera revisão, NÃO posta no GitHub
     review_history: List[Dict[str, Any]]
     final_message: str  # mensagem final da execução (sucesso OU falha) — distinta de error_message
+    processed_reviews: List[Dict[str, Any]]  # revisões geradas nesta execução para exibição e auditoria

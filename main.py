@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.graph import build_graph
-from src.tools.observability import get_observer
+from src.tools.observability import format_terminal_report, get_observer
 
 
 def parse_args():
@@ -54,6 +54,7 @@ def main():
         "dry_run": bool(args.dry_run),
         "review_history": [],
         "final_message": "",
+        "processed_reviews": [],
     }
 
     # Observabilidade (Issue #14): abre os dois sinais correlacionados por
@@ -75,6 +76,7 @@ def main():
             "processed_prs_count": 0,
             "repo_owner": "",
             "repo_name": "",
+            "processed_reviews": [],
         }
 
     paths = observer.finish_run(
@@ -85,11 +87,28 @@ def main():
         repo_name=result.get("repo_name", ""),
     )
 
-    print("\n" + "=" * 50)
-    print(result.get("final_message", "Revisão concluída com sucesso!"))
-    print("=" * 50)
-    print(f"[obs] Log estruturado : {paths['structured_log']}")
-    print(f"[obs] Auditoria       : {paths['audit']}")
+    audit_data = paths.get("audit_data", {})
+    if "audit" in paths and "audit_path" not in audit_data:
+        audit_data["audit_path"] = paths["audit"]
+
+    repo_owner = result.get("repo_owner", "")
+    repo_name = result.get("repo_name", "")
+    history_path = ""
+    if repo_owner and repo_name:
+        candidate_history = os.path.join("reviews", f"{repo_owner}_{repo_name}", "history.json")
+        if os.path.exists(candidate_history):
+            history_path = candidate_history
+
+    report = format_terminal_report(
+        audit=audit_data,
+        processed_reviews=result.get("processed_reviews", []),
+        history_path=history_path,
+    )
+
+    try:
+        print("\n" + report)
+    except UnicodeEncodeError:
+        print("\n" + report.encode("ascii", errors="replace").decode("ascii"))
 
 
 if __name__ == "__main__":

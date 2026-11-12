@@ -68,6 +68,17 @@ def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
     metadata = state.get("current_metadata_summary", "")
     dry_run = bool(state.get("dry_run", False))
 
+    reviewed_entry = {
+        "pr_number": pr.get("number"),
+        "pr_title": pr.get("title", ""),
+        "review": review,
+        "metadata": metadata,
+        "dry_run": dry_run,
+        "security_report": state.get("security_report", {}) or {},
+    }
+    updated_reviews = list(state.get("processed_reviews") or [])
+    updated_reviews.append(reviewed_entry)
+
     # ------------------------------------------------------------------
     # Limite de autonomia (--dry-run): a revisão existe, mas NADA é
     # escrito no GitHub. A publicação exige uma execução sem --dry-run,
@@ -87,6 +98,7 @@ def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
         )
         return {
             "processed_prs_count": state.get("processed_prs_count", 0) + 1,
+            "processed_reviews": updated_reviews,
             "current_pr": {},
             "current_diff": "",
             "current_diff_sanitized": "",
@@ -131,6 +143,7 @@ def postar_comentario(state: PRReviewState) -> Dict[str, Any]:
 
     return {
         "processed_prs_count": state.get("processed_prs_count", 0) + 1,
+        "processed_reviews": updated_reviews,
         "current_pr": {},
         "current_diff": "",
         "current_diff_sanitized": "",
